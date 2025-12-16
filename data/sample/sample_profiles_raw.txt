@@ -1,0 +1,39 @@
+John Doe
+Senior Backend Developer with 5 years experience
+Skills: Python (Expert), Django (Advanced), PostgreSQL (Advanced), Docker (Intermediate), AWS (Intermediate)
+Tools: Git, Docker, Jenkins, Kubernetes
+Collaboration Style: Prefers agile methodology, good at mentoring juniors
+Availability: 40 hours/week
+Timezone: UTC+1
+
+Jane Smith
+UX/UI Designer with 3 years experience  
+Skills: Figma (Expert), Adobe XD (Advanced), User Research (Advanced), Prototyping (Advanced)
+Tools: Sketch, InVision, Zeplin, Miro
+Collaboration Style: Creative, enjoys brainstorming sessions, good communicator
+Availability: 35 hours/week
+Timezone: UTC+2
+
+Alex Chen
+Data Scientist with 4 years experience
+Skills: Python (Advanced), Machine Learning (Advanced), SQL (Advanced), TensorFlow (Intermediate), PyTorch (Intermediate)
+Tools: Jupyter, Scikit-learn, Pandas, NumPy
+Collaboration Style: Analytical, detail-oriented, prefers structured tasks
+Availability: 40 hours/week  
+Timezone: UTC+1
+
+Maria Garcia
+Full Stack Developer with 6 years experience
+Skills: JavaScript (Expert), React (Expert), Node.js (Advanced), MongoDB (Advanced), AWS (Intermediate)
+Tools: VS Code, Git, Docker, Jest
+Collaboration Style: Team player, proactive, good at code reviews
+Availability: 30 hours/week
+Timezone: UTC-5
+
+David Kim
+Project Manager with 7 years experience
+Skills: Agile (Expert), Scrum (Expert), Risk Management (Advanced), Budgeting (Advanced)
+Tools: Jira, Confluence, Trello, Slack
+Collaboration Style: Leadership, organized, good at conflict resolution
+Availability: 40 hours/week
+Timezone: UTC+0

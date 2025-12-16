@@ -1,0 +1,22 @@
+[
+  {
+    "id": "p1",
+    "title": "E-commerce Platform Redesign",
+    "description": "Redesign our e-commerce platform with modern UI/UX, improve performance, and add recommendation features.",
+    "required_roles": ["Frontend Developer", "Backend Developer", "UX Designer", "Data Scientist"],
+    "required_skills": ["React", "Python", "Figma", "Machine Learning", "SQL"],
+    "team_size": 4,
+    "duration_weeks": 12,
+    "priority_skills": ["React", "Python", "Figma"]
+  },
+  {
+    "id": "p2", 
+    "title": "Mobile App Development",
+    "description": "Develop a cross-platform mobile app for task management with cloud synchronization.",
+    "required_roles": ["Mobile Developer", "Backend Developer", "UI Designer"],
+    "required_skills": ["React Native", "Node.js", "MongoDB", "UI Design"],
+    "team_size": 3,
+    "duration_weeks": 8,
+    "priority_skills": ["React Native", "Node.js"]
+  }
+]

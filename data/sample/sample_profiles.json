@@ -1,0 +1,55 @@
+[
+  {
+    "id": "1",
+    "name": "John Doe",
+    "role": "Backend Developer",
+    "skills": ["Python", "Django", "PostgreSQL", "Docker", "AWS"],
+    "skill_levels": {
+      "Python": "Expert",
+      "Django": "Advanced", 
+      "PostgreSQL": "Advanced",
+      "Docker": "Intermediate",
+      "AWS": "Intermediate"
+    },
+    "experience_years": 5,
+    "tools": ["Git", "Docker", "Jenkins", "Kubernetes"],
+    "collaboration_style": "Agile, mentoring",
+    "availability_hours": 40,
+    "timezone": "UTC+1"
+  },
+  {
+    "id": "2",
+    "name": "Jane Smith",
+    "role": "UX/UI Designer", 
+    "skills": ["Figma", "Adobe XD", "User Research", "Prototyping", "UI/UX Design"],
+    "skill_levels": {
+      "Figma": "Expert",
+      "Adobe XD": "Advanced",
+      "User Research": "Advanced",
+      "Prototyping": "Advanced"
+    },
+    "experience_years": 3,
+    "tools": ["Sketch", "InVision", "Zeplin", "Miro"],
+    "collaboration_style": "Creative, communicative",
+    "availability_hours": 35,
+    "timezone": "UTC+2"
+  },
+  {
+    "id": "3",
+    "name": "Alex Chen",
+    "role": "Data Scientist",
+    "skills": ["Python", "Machine Learning", "SQL", "TensorFlow", "PyTorch"],
+    "skill_levels": {
+      "Python": "Advanced",
+      "Machine Learning": "Advanced",
+      "SQL": "Advanced", 
+      "TensorFlow": "Intermediate",
+      "PyTorch": "Intermediate"
+    },
+    "experience_years": 4,
+    "tools": ["Jupyter", "Scikit-learn", "Pandas", "NumPy"],
+    "collaboration_style": "Analytical, structured",
+    "availability_hours": 40,
+    "timezone": "UTC+1"
+  }
+]
