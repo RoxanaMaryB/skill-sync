@@ -1,0 +1,37 @@
+[
+  {
+    "id": "c1",
+    "technical_skills": ["Python", "Machine Learning", "Pandas"],
+    "soft_skills": ["communication", "problem solving"],
+    "preferred_roles": ["ML Engineer"],
+    "experience_tags": ["NLP project", "data preprocessing"]
+  },
+  {
+    "id": "c2",
+    "technical_skills": ["JavaScript", "React", "CSS"],
+    "soft_skills": ["teamwork", "creativity"],
+    "preferred_roles": ["Frontend Developer"],
+    "experience_tags": ["web applications", "UI design"]
+  },
+  {
+    "id": "c3",
+    "technical_skills": ["Python", "SQL", "Data Warehousing"],
+    "soft_skills": ["attention to detail"],
+    "preferred_roles": ["Data Engineer"],
+    "experience_tags": ["ETL pipelines", "database optimization"]
+  },
+  {
+    "id": "c4",
+    "technical_skills": ["Java", "Spring", "Microservices"],
+    "soft_skills": ["leadership", "mentoring"],
+    "preferred_roles": ["Backend Developer"],
+    "experience_tags": ["enterprise systems", "API development"]
+  },
+  {
+    "id": "c5",
+    "technical_skills": ["Python", "Deep Learning", "PyTorch"],
+    "soft_skills": ["research", "critical thinking"],
+    "preferred_roles": ["AI Researcher"],
+    "experience_tags": ["computer vision", "model experimentation"]
+  }
+]
