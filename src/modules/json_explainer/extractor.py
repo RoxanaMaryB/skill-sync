@@ -790,9 +790,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import pandas as pd
 from openai import OpenAI
 
-# ============================================================
-# CONFIG
-# ============================================================
+
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
 SYSTEM_PROMPT = """You are an information extraction assistant.
@@ -1138,23 +1136,19 @@ Now extract from the following candidate text:
 
 """
 
-# ============================================================
-# DATA CLASSES
-# ============================================================
+
 @dataclass
 class ExtractorConfig:
     model: str = "openai/gpt-4o-mini"
     temperature: float = 0.0
     limit: int = 3
     retries: int = 1
-    request_timeout_s: int = 60  # prevents hanging forever
-    sleep_between_calls_s: float = 0.2  # helps rate limits
-    debug: bool = True  # turn debug prints on/off
+    request_timeout_s: int = 60  
+    sleep_between_calls_s: float = 0.2  
+    debug: bool = True  
 
 
-# ============================================================
-# EXTRACTOR
-# ============================================================
+
 class CandidateProfileExtractor:
     """
     Pipeline-friendly extractor (OOP):
@@ -1171,11 +1165,11 @@ class CandidateProfileExtractor:
     ):
         self.config = config or ExtractorConfig()
 
-        # DEBUG: Validate API key early
+     
         if not api_key:
             raise ValueError("Missing OPENROUTER_API_KEY in environment")
 
-        # DEBUG: Create OpenAI client with timeout to avoid hangs
+        
         self.client = OpenAI(
             api_key=api_key,
             base_url=base_url,
@@ -1187,7 +1181,7 @@ class CandidateProfileExtractor:
             print(f"[DEBUG] Model: {self.config.model}", flush=True)
             print(f"[DEBUG] Timeout(s): {self.config.request_timeout_s}", flush=True)
 
-    # ---------- utilities ----------
+   
     @staticmethod
     def as_str(v: Any) -> str:
         if v is None:
@@ -1227,7 +1221,6 @@ class CandidateProfileExtractor:
             raise ValueError("No JSON object found in model output")
         return json.loads(raw[start : end + 1])
 
-    # ---------- text builder ----------
     def build_profile_text(self, r: Dict[str, Any]) -> str:
         """
         DEBUG: This constructs exactly what the LLM sees.
@@ -1270,7 +1263,7 @@ class CandidateProfileExtractor:
         ]
         return "\n".join([f"{k}: {v}" for k, v in fields])
 
-    # ---------- LLM call ----------
+    #  LLM call 
     def extract_one(self, row: Dict[str, Any], i: int = -1) -> Dict[str, Any]:
         """
         DEBUG: Extract a single row. Prints key checkpoints and short preview.
@@ -1280,7 +1273,7 @@ class CandidateProfileExtractor:
         if self.config.debug:
             cid = self.as_str(row.get("Candidate ID"))
             print(f"[DEBUG] Calling LLM for row={i} CID={cid}", flush=True)
-            # show short preview to confirm correct input
+            
             preview = text.replace("\n", " | ")
             print(f"[DEBUG] Input preview: {preview[:200]}...", flush=True)
 
@@ -1300,16 +1293,16 @@ class CandidateProfileExtractor:
 
         profile = self.safe_json_loads(raw)
 
-        # enforce copy-exact id from source
+        
         profile["id"] = self.as_str(row.get("Candidate ID"))
 
-        # help rate limiting
+      
         if self.config.sleep_between_calls_s > 0:
             time.sleep(self.config.sleep_between_calls_s)
 
         return profile
 
-    # ---------- batch ----------
+
     def extract_all(self, df: pd.DataFrame, n: Optional[int] = None) -> Tuple[List[Dict[str, Any]], Dict[str, str]]:
         """
         DEBUG: Batch extraction with progress + retries + per-row error visibility.
@@ -1328,7 +1321,7 @@ class CandidateProfileExtractor:
             row = df.iloc[i].to_dict()
             cid = self.as_str(row.get("Candidate ID"))
 
-            # DEBUG: progress every row
+           
             print(f"➡️ Extracting row {i+1}/{limit} (CID={cid})", flush=True)
 
             text = self.build_profile_text(row)
@@ -1350,12 +1343,12 @@ class CandidateProfileExtractor:
                     print(f"[ERROR] row={i} CID={cid} attempt={attempt+1} error={last_err}", flush=True)
 
             if last_err is not None:
-                # fallback object with error (keeps pipeline running)
+                
                 profiles.append({"id": cid, "error": last_err})
 
         return profiles, inputs
 
-    # ---------- saving ----------
+  
     @staticmethod
     def save_json(obj: Any, out_path: str) -> None:
         """
@@ -1372,9 +1365,7 @@ class CandidateProfileExtractor:
         return p
 
 
-# ============================================================
-# PIPELINE ENTRY POINT
-# ============================================================
+
 def run_extraction(
     csv_path: str = "data/skillsync_dataset_v1_draft_with_candidate_id.csv",
     out_clean: str = "data/candidate_profiles.json",
@@ -1412,13 +1403,12 @@ def run_extraction(
     if out_inputs:
         extractor.save_json(inputs, out_inputs)
 
-    print(f"✅ Saved: {out_clean}", flush=True)
+    print(f" Saved: {out_clean}", flush=True)
     if out_with_evidence:
-        print(f"✅ Saved: {out_with_evidence}", flush=True)
+        print(f" Saved: {out_with_evidence}", flush=True)
     if out_inputs:
-        print(f"✅ Saved: {out_inputs}", flush=True)
+        print(f" Saved: {out_inputs}", flush=True)
 
 
 
 
-#c:\Users\HP-ZBOOK i7\Desktop\relevant_dataset_gen_ai_project\stack-overflow-developer-survey-2024\skillsync_dataset_v1_draft_with_candidate_id.csv

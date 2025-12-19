@@ -19,7 +19,7 @@
 #     """
 #     Main pipeline execution
 #     """
-#     print('🚀 Starting SkillSync Pipeline')
+#     print(' Starting SkillSync Pipeline')
     
 #     # 1. Load data
 #     # 2. Extract profiles
@@ -57,18 +57,18 @@ def main():
     """
     Main pipeline execution
     """
-    print("🚀 Starting SkillSync Pipeline")
+    print(" Starting SkillSync Pipeline")
 
     print("DEBUG run_extraction imported from:", run_extraction.__module__)
     print("DEBUG run_extraction file:", run_extraction.__code__.co_filename)
 
-    # 1. Extract profiles
+  
     run_extraction(n=200)
 
 
     print("DEBUG finished run_extraction()")
 
-    print("✅ Pipeline completed")
+    print(" Pipeline completed")
 
 
 if __name__ == "__main__":
