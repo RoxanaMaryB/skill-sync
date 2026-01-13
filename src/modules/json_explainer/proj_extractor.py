@@ -1,7 +1,6 @@
 
 from __future__ import annotations
 
-
 import json
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
@@ -10,7 +9,6 @@ from openai import OpenAI
 
 SYSTEM_PROMPT = """You are an information extraction assistant.
 
-
 Hard constraints:
 - Extract ONLY what is explicitly supported by the input text.
 - Return VALID JSON ONLY (no markdown, no extra text).
@@ -18,40 +16,38 @@ Hard constraints:
 - If a term is clearly a technology and is explicitly mentioned, extract it.
 - If uncertain or ambiguous, omit the item.
 
-
 Very important:
 - The USER'S project description is the ONLY source of truth for what to extract.
-- Any lists in the prompt are for NAME NORMALIZATION ONLY, not for restricting extraction.
+- Any lists in the prompt are for NAME NORMALIZATION ONLY for technologies, not for restricting extraction,
+  EXCEPT the allowed roles list, which IS a strict output whitelist for roles.
 """
 
 
 USER_PROMPT = """Extract technical requirements from the project description.
 
-
 Return EXACTLY this JSON schema (no extra keys):
-
 
 {
   "technical_requirements": {
     "skills": [],
-    "tools": []
+    "tools": [],
+    "roles": []
   }
 }
-
 
 Rules:
 - skills: programming languages, frameworks, libraries, databases, cloud platforms.
 - tools: developer tools (IDEs, CLIs, package managers, build/test/deploy tools).
+- roles: required project roles (STRICT: only from the allowed role labels list below).
 - Extract ONLY what is supported by the text (no guessing).
 - Return lists with unique items (no duplicates).
 - Return JSON only.
-
+- If uncertain or ambiguous, omit the item.
 
 CRITICAL INTERPRETATION RULE:
 - Extract technologies from the PROJECT DESCRIPTION, even if they are NOT listed anywhere in this prompt.
-- Lists in this prompt exist ONLY to normalize spelling/casing/spacing/punctuation for consistency.
+- Lists in this prompt exist ONLY to normalize spelling/casing/spacing/punctuation for consistency (technologies).
 - Do NOT omit a clearly mentioned technology just because it is not listed below.
-
 
 Category guidance using Stack Overflow 2024 sections (for classification only):
 - "skills" may include items that belong to:
@@ -64,24 +60,60 @@ Category guidance using Stack Overflow 2024 sections (for classification only):
   1) Developer tools for compiling, building and testing
   2) Collaborative work management and/or code documentation tools
 
-
 Mapping / normalization rule:
 - If the text mentions a technology using a variant/typo/alias, you MAY normalize it ONLY if the target is unambiguous.
 - If normalization is ambiguous, keep the original wording from the project description (or omit if unclear).
+- Do NOT normalize roles.
 
+ROLES (STRICT — LITERAL VALUES ONLY):
+- You MAY ONLY output roles from the allowed list below.
+- Output role labels EXACTLY as written (character-for-character).
+- Do NOT reword, normalize, shorten, or expand role names.
+- Do NOT invent new roles.
+- Do NOT output partial matches.
+- Do NOT output "Other (please specify):".
+- If no role from the list is clearly supported by the project description, return an empty roles list.
+
+ROLE MAPPING RULES (ONLY TO SELECT FROM THE ALLOWED ROLE LABELS BELOW):
+Apply these ONLY when the project description explicitly mentions the related technology/responsibility.
+
+- If the text mentions a frontend framework or frontend/UI work (e.g., React, Vue, Angular, "frontend", "UI"):
+  add: "Developer, front-end"
+
+- If the text mentions backend services/server/backend work (e.g., "backend", "server", "API services", Python services, Node.js backend, Java backend):
+  add: "Developer, back-end"
+
+- If the text mentions mobile app/mobile controls (e.g., React Native, iOS, Android, "mobile"):
+  add: "Developer, mobile"
+
+- If the text mentions embedded/IoT devices (e.g., MQTT, "IoT", "smart home devices", embedded devices):
+  add: "Developer, embedded applications or devices"
+
+- If the text mentions Machine Learning or NLP for AI capabilities (e.g., "Machine Learning", "ML", "NLP"):
+  add: "Data scientist or machine learning specialist"
+
+- If the text mentions SQL/database storage/analytics/streaming pipelines (e.g., SQL, PostgreSQL, "analytics storage", Kafka pipelines):
+  add: "Data engineer"
+
+- If the text mentions cloud infrastructure/migration/hosting (e.g., AWS, GCP, Azure, "cloud migration", "cloud hosting"):
+  add: "Cloud infrastructure engineer"
+
+- If the text mentions Docker/Kubernetes/orchestration/operations:
+  add: "DevOps specialist"
+
+- If the text explicitly mentions SRE or "site reliability":
+  add: "Engineer, site reliability"
 
 TARGETED CANONICALIZATION PATCH (NORMALIZATION ONLY — NOT A WHITELIST):
 These specific Stack Overflow 2024 labels often appear with spacing/punctuation/case variants.
 If (and only if) the project description clearly refers to one of these items, output the EXACT label below.
 Otherwise, ignore this list completely and extract normally.
 
-
 Languages / markup / shell:
 - Bash/Shell (all shells)
 - HTML/CSS
 - Objective-C
 - Visual Basic (.Net)
-
 
 Database environments:
 - Cloud Firestore
@@ -93,7 +125,6 @@ Database environments:
 - Microsoft SQL Server
 - Microsoft Access
 
-
 Cloud platforms:
 - Alibaba Cloud
 - Amazon Web Services (AWS)
@@ -102,19 +133,16 @@ Cloud platforms:
 - IBM Cloud Or Watson
 - Oracle Cloud Infrastructure (OCI)
 
-
 Web frameworks and web technologies:
 - ASP.NET CORE
 - Play Framework
 - Ruby on Rails
-
 
 Compilers / build / test / dev tooling:
 - GNU GCC
 - LLVM's Clang
 - Google Test
 - Maven (build tool)
-
 
 Other frameworks and libraries:
 - .NET (5+)
@@ -127,11 +155,9 @@ Other frameworks and libraries:
 - Spring Framework
 - Torch/PyTorch
 
-
 Game engines / platforms:
 - Unity 3D
 - Unreal Engine
-
 
 IDEs / editors / developer environments:
 - Visual Studio Solution
@@ -141,23 +167,19 @@ IDEs / editors / developer environments:
 - Qt Creator
 - Rad Studio (Delphi, C++ Builder)
 
-
 Collaborative work management and/or code documentation tools:
 - GitHub Discussions
   NOTE: If excluded by the Exclusions rule, then OMIT it even if mentioned.
-
 
 STRICTNESS RULE (to limit hallucinations):
 - Do NOT output labels unless the project description explicitly supports them.
 - Do NOT map unrelated terms to the labels above.
 - If ambiguous, omit.
 
-
 Output rule:
 - Do NOT output "Other (please specify)".
 - Do NOT output section headings.
-- Output only the technology names.
-
+- Output only the extracted values.
 
 Normalization rules (apply ONLY when clearly applicable):
 1) Cloud platform normalization
@@ -167,26 +189,50 @@ Normalization rules (apply ONLY when clearly applicable):
 - If the text mentions "IBM Cloud" or "Watson", output: "IBM Cloud Or Watson"
 - If the text mentions "DigitalOcean", output: "Digital Ocean"
 
-
 2) .NET / Visual Basic normalization
 - If the text mentions ".NET Core" or "ASP.NET Core", output: "ASP.NET CORE"
 - If the text mentions "VB.NET" or "Visual Basic .NET", output: "Visual Basic (.Net)"
 - If the text mentions ".NET 5" ".NET 6" ".NET 7" ".NET 8" or "modern .NET", output: ".NET (5+)"
 - If the text mentions ".NET Framework", output: ".NET Framework (1.0 - 4.8)"
 
-
 3) Shell normalization
 - If the text mentions "Bash" or "Shell scripting", output: "Bash/Shell (all shells)"
-
 
 4) PyTorch normalization
 - If the text mentions "PyTorch" or "Torch", output: "Torch/PyTorch"
 
+ALLOWED ROLE LABELS (AUTHORITATIVE — ROLES MAY ONLY BE FROM THIS LIST):
+- Developer, full-stack
+- Other (please specify):
+- Developer, back-end
+- Academic researcher
+- Developer, desktop or enterprise applications
+- Engineering manager
+- Senior Executive (C-Suite, VP, etc.)
+- Blockchain
+- Research & Development role
+- Developer, QA or test
+- Student
+- DevOps specialist
+- Educator
+- Developer, mobile
+- Developer, front-end
+- Engineer, site reliability
+- Project manager
+- Security professional
+- Data or business analyst
+- Developer, embedded applications or devices
+- Developer, AI
+- Cloud infrastructure engineer
+- Data engineer
+- Developer Advocate
+- Data scientist or machine learning specialist
+- Product manager
 
 Exclusions (ASSUME EVERYONE HAS THESE):
 - Do NOT include any Git/GitHub/version control items in tools or skills:
   "Git", "GitHub", "GitHub Actions", "GitLab", "Bitbucket", "SVN", "Mercurial".
-
+- Do NOT output "Other (please specify):" in roles.
 
 If none found: empty lists.
 """
@@ -198,13 +244,10 @@ class ProjectExtractorConfig:
     temperature: float = 0.0
 
 
-
-
 class ProjectSchemaExtractor:
     def __init__(self, api_key: str, base_url: str, config: Optional[ProjectExtractorConfig] = None):
         self.config = config or ProjectExtractorConfig()
         self.client = OpenAI(api_key=api_key, base_url=base_url)
-
 
     @staticmethod
     def safe_json_loads(raw: str) -> Dict[str, Any]:
@@ -214,7 +257,6 @@ class ProjectSchemaExtractor:
         if start == -1 or end == -1 or end <= start:
             raise ValueError("No JSON object found in model output")
         return json.loads(raw[start : end + 1])
-
 
     def extract_requirements(self, description: str) -> Dict[str, Any]:
         resp = self.client.chat.completions.create(
@@ -230,11 +272,6 @@ class ProjectSchemaExtractor:
         )
         raw = resp.choices[0].message.content
         return self.safe_json_loads(raw)
-
-
-
-
-
 
 
 
