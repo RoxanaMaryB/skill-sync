@@ -1,317 +1,305 @@
 
 """
-Team Construction Module (M3 - Ana)
+Greedy team formation that balances:
+- Fit to project (candidate-project similarity from M2)
+- Diversity / complementarity (penalize similarity to current team from M1 matrix)
+- Skill coverage (marginal gain in required skills)
+
+ GenAI touch:
+- LLM reranker among top-K candidates at each step (only if OPENAI_API_KEY is set)
+  to consider soft-skill/risk signals from provided fields.
 """
 
-import numpy as np
-from typing import List, Dict, Any
+from __future__ import annotations
+
+import os
+import json
 import logging
+from typing import List, Dict, Optional, Tuple
+
+import numpy as np
 from shared.interfaces import CandidateProfile, ProjectDescription
 
-# Setup logging
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
-class TeamBuilder:
-    """Greedy algorithm for team formation"""
-    
-    def __init__(self, alpha: float = 0.5, beta: float = 0.3, gamma: float = 0.2):
-        """
-        Initialize team builder with weights.
-        
-        Args:
-            alpha: Weight for candidate-project fit
-            beta: Weight for diversity (1 - similarity)
-            gamma: Weight for skill coverage
-        """
-        self.alpha = alpha  # Fit weight
-        self.beta = beta    # Diversity weight  
-        self.gamma = gamma  # Coverage weight
-        
-    def calculate_skill_coverage(self, team: List[CandidateProfile], 
-                               required_skills: List[str]) -> float:
-        """
-        Calculate what percentage of required skills are covered by the team.
-        
-        Args:
-            team: List of candidate profiles
-            required_skills: List of skills required for the project
-            
-        Returns:
-            Coverage score between 0 and 1
-        """
-        if not required_skills:
-            return 1.0
-            
-        # Get all unique skills from team members
-        team_skills = set()
-        for member in team:
-            team_skills.update(member.skills)
-        
-        # Calculate coverage
-        covered_skills = set(required_skills) & team_skills
-        coverage = len(covered_skills) / len(required_skills)
-        
-        return coverage
-    
-    def calculate_team_diversity(self, team: List[CandidateProfile],
-                               candidate_sim_matrix: np.array,
-                               candidate_ids: List[str]) -> float:
-        """
-        Calculate diversity score for a team (1 - average similarity).
-        
-        Args:
-            team: List of candidate profiles
-            candidate_sim_matrix: Precomputed similarity matrix
-            candidate_ids: List of candidate IDs in order of matrix
-            
-        Returns:
-            Diversity score between 0 and 1 (higher = more diverse)
-        """
-        if len(team) <= 1:
-            return 1.0
-            
-        # Get indices of team members in similarity matrix
-        team_indices = []
-        for member in team:
-            if member.id in candidate_ids:
-                idx = candidate_ids.index(member.id)
-                team_indices.append(idx)
-        
-        if len(team_indices) <= 1:
-            return 1.0
-            
-        # Calculate average similarity between team members
-        total_similarity = 0
-        count = 0
-        
-        for i in range(len(team_indices)):
-            for j in range(i + 1, len(team_indices)):
-                idx_i = team_indices[i]
-                idx_j = team_indices[j]
-                total_similarity += candidate_sim_matrix[idx_i, idx_j]
-                count += 1
-        
-        if count == 0:
-            return 1.0
-            
-        avg_similarity = total_similarity / count
-        
-        # Diversity is inverse of similarity
-        diversity = 1 - avg_similarity
-        
-        return max(0, min(1, diversity))
-    
-    def calculate_team_fit(self, team: List[CandidateProfile],
-                         project_similarities: Dict[str, float]) -> float:
-        """
-        Calculate average project fit for team members.
-        
-        Args:
-            team: List of candidate profiles
-            project_similarities: Dictionary of candidate_id -> similarity score
-            
-        Returns:
-            Average fit score between 0 and 1
-        """
-        if not team:
-            return 0.0
-            
-        total_fit = 0
-        count = 0
-        
-        for member in team:
-            if member.id in project_similarities:
-                total_fit += project_similarities[member.id]
-                count += 1
-        
-        if count == 0:
-            return 0.0
-            
-        return total_fit / count
-    
-    def calculate_team_score(self, team: List[CandidateProfile],
-                           candidate_sim_matrix: np.array,
-                           candidate_ids: List[str],
-                           project_similarities: Dict[str, float],
-                           required_skills: List[str]) -> float:
-        """
-        Calculate overall team score using weighted combination.
-        
-        Args:
-            team: List of candidate profiles
-            candidate_sim_matrix: Precomputed similarity matrix
-            candidate_ids: List of candidate IDs in order of matrix
-            project_similarities: Dictionary of candidate_id -> similarity
-            required_skills: List of required skills for project
-            
-        Returns:
-            Overall team score
-        """
-        # Calculate individual components
-        coverage = self.calculate_skill_coverage(team, required_skills)
-        diversity = self.calculate_team_diversity(team, candidate_sim_matrix, candidate_ids)
-        fit = self.calculate_team_fit(team, project_similarities)
-        
-        # Weighted combination
-        score = (self.alpha * fit + 
-                self.beta * diversity + 
-                self.gamma * coverage)
-        
-        return score
-    
-    def build_team_greedy(self,
-                         profiles: List[CandidateProfile],
-                         project: ProjectDescription,
-                         candidate_sim_matrix: np.array,
-                         candidate_ids: List[str],
-                         project_similarities: Dict[str, float]) -> List[CandidateProfile]:
-        """
-        Build a team using greedy algorithm.
-        
-        Args:
-            profiles: List of all candidate profiles
-            project: Project description
-            candidate_sim_matrix: Precomputed similarity matrix
-            candidate_ids: List of candidate IDs in order of matrix
-            project_similarities: Dictionary of candidate_id -> similarity
-            
-        Returns:
-            List of selected team members
-        """
-        logger.info(f"Building team of size {project.team_size}")
-        
-        # Filter out candidates with very low project similarity
-        filtered_profiles = []
-        for profile in profiles:
-            if profile.id in project_similarities and project_similarities[profile.id] > 0.3:
-                filtered_profiles.append(profile)
-        
-        if not filtered_profiles:
-            filtered_profiles = profiles[:project.team_size]
-            logger.warning("No candidates passed similarity filter, using first few")
-        
-        # Start with candidate with highest project fit
-        sorted_by_fit = sorted(filtered_profiles, 
-                             key=lambda p: project_similarities.get(p.id, 0), 
-                             reverse=True)
-        
-        if not sorted_by_fit:
+# Optional dependency: OpenAI
+try:
+    from openai import OpenAI  # type: ignore
+except Exception:
+    OpenAI = None
+
+
+def _norm_skill(s: str) -> str:
+    return (s or "").strip().lower()
+
+def _team_skill_set(team: List[CandidateProfile]) -> set:
+    s = set()
+    for m in team:
+        s.update([_norm_skill(x) for x in (m.skills or []) if x])
+    return s
+
+def coverage_gain(team: List[CandidateProfile], candidate: CandidateProfile, required_skills: List[str]) -> float:
+    """Marginal gain in required skill coverage by adding candidate (0..1)."""
+    req = set([_norm_skill(x) for x in (required_skills or []) if x])
+    if not req:
+        return 0.0
+
+    team_sk = _team_skill_set(team)
+    cand_sk = set([_norm_skill(x) for x in (candidate.skills or []) if x])
+
+    before = len(req & team_sk)
+    after = len(req & (team_sk | cand_sk))
+    return (after - before) / max(1, len(req))
+
+def avg_similarity_to_team(
+    candidate_id: str,
+    team_ids: List[str],
+    sim_matrix: np.ndarray,
+    candidate_ids_order: List[str],
+) -> float:
+    """Average similarity between candidate and current team members. Returns 0 if missing."""
+    if not team_ids:
+        return 0.0
+    idx = {cid: i for i, cid in enumerate(candidate_ids_order)}
+    if candidate_id not in idx:
+        return 0.0
+    ci = idx[candidate_id]
+    sims = []
+    for tid in team_ids:
+        if tid in idx:
+            sims.append(float(sim_matrix[ci, idx[tid]]))
+    return float(sum(sims) / len(sims)) if sims else 0.0
+
+def _safe_fit(project_similarities: Dict[str, float], cid: str) -> float:
+    try:
+        return float(project_similarities.get(cid, 0.0))
+    except Exception:
+        return 0.0
+
+
+
+#LLM reranker (bounded)
+
+
+def llm_choose_best_candidate(
+    team: List[CandidateProfile],
+    shortlist: List[CandidateProfile],
+    project: ProjectDescription,
+    project_similarities: Dict[str, float],
+    sim_matrix: np.ndarray,
+    candidate_ids_order: List[str],
+    model: str = "gpt-4.1-mini",
+) -> Optional[str]:
+    """
+    Pick ONE candidate from shortlist only. Returns candidate_id or None (fallback).
+    Auto-disabled if OPENAI_API_KEY missing.
+    """
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key or OpenAI is None:
+        return None
+
+    client = OpenAI(api_key=api_key)
+
+    team_ids = [m.id for m in team]
+    missing_required = sorted(
+        set([_norm_skill(x) for x in (project.required_skills or []) if x]) - _team_skill_set(team)
+    )
+
+    def brief(m: CandidateProfile) -> Dict:
+        return {
+            "id": m.id,
+            "role": m.role,
+            "availability_hours": m.availability_hours,
+            "collaboration_style": m.collaboration_style,
+            "skills": (m.skills or [])[:20],
+            "fit": _safe_fit(project_similarities, m.id),
+        }
+
+    def cand_brief(c: CandidateProfile) -> Dict:
+        team_sk = _team_skill_set(team)
+        add_req = sorted(
+            set([_norm_skill(x) for x in (project.required_skills or []) if x])
+            & (set([_norm_skill(x) for x in (c.skills or []) if x]) - team_sk)
+        )
+        return {
+            **brief(c),
+            "avg_similarity_to_team": avg_similarity_to_team(c.id, team_ids, sim_matrix, candidate_ids_order),
+            "adds_required_skills": add_req,
+        }
+
+    payload = {
+        "project": {
+            "title": project.title,
+            "required_roles": project.required_roles,
+            "required_skills": project.required_skills,
+            "priority_skills": project.priority_skills,
+            "team_size": project.team_size,
+        },
+        "current_team": [brief(m) for m in team],
+        "missing_required_skills": missing_required,
+        "shortlist": [cand_brief(c) for c in shortlist],
+        "rules": [
+            "Pick exactly ONE candidate from shortlist.",
+            "Prefer candidates that add missing required skills.",
+            "Prefer lower avg_similarity_to_team (less redundancy).",
+            "Consider availability and role balance.",
+            "Do not invent skills or facts; use only provided data."
+        ],
+        "output_format": {
+            "best_candidate_id": "string (must be in shortlist)",
+            "reason": "short string",
+            "risks": ["short strings"]
+        }
+    }
+
+    prompt = (
+        "You are a team composition critic. Choose the best next candidate.\n"
+        "Return JSON ONLY.\n"
+        f"{json.dumps(payload, indent=2)}"
+    )
+
+    try:
+        resp = client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.2,
+            max_tokens=220,
+        )
+        txt = resp.choices[0].message.content.strip()
+        a, b = txt.find("{"), txt.rfind("}")
+        if a == -1 or b == -1:
+            return None
+        obj = json.loads(txt[a:b+1])
+        chosen = obj.get("best_candidate_id")
+        if chosen and chosen in {c.id for c in shortlist}:
+            return str(chosen)
+        return None
+    except Exception as e:
+        logger.info(f"LLM rerank skipped (fallback). Reason: {e}")
+        return None
+
+
+# Team Builder
+
+class TeamBuilderGenAI:
+    """Greedy team builder with optional LLM reranking among top-K each step."""
+
+    def __init__(
+        self,
+        alpha: float = 0.55,   # fit
+        beta: float = 0.25,    # diversity
+        gamma: float = 0.20,   # coverage gain
+        fit_threshold: float = 0.0,
+        rerank_top_k: int = 5,
+        use_llm_rerank: bool = True,
+        llm_model: str = "gpt-4.1-mini",
+    ):
+        self.alpha = alpha
+        self.beta = beta
+        self.gamma = gamma
+        self.fit_threshold = fit_threshold
+        self.rerank_top_k = rerank_top_k
+
+        #never crash if no key; just disable.
+        self.use_llm_rerank = bool(use_llm_rerank and os.getenv("OPENAI_API_KEY") and OpenAI is not None)
+        self.llm_model = llm_model
+
+        if use_llm_rerank and not self.use_llm_rerank:
+            logger.info("LLM reranker disabled (no OPENAI_API_KEY or openai pkg missing).")
+
+    def _score_next(
+        self,
+        team: List[CandidateProfile],
+        cand: CandidateProfile,
+        project: ProjectDescription,
+        sim_matrix: np.ndarray,
+        candidate_ids_order: List[str],
+        project_similarities: Dict[str, float],
+    ) -> float:
+        fit = _safe_fit(project_similarities, cand.id)
+        gain_cov = coverage_gain(team, cand, project.required_skills)
+
+        team_ids = [m.id for m in team]
+        avg_sim = avg_similarity_to_team(cand.id, team_ids, sim_matrix, candidate_ids_order)
+        diversity = 1.0 - avg_sim
+
+        return float((self.alpha * fit) + (self.gamma * gain_cov) + (self.beta * diversity))
+
+    def build_team_greedy(
+        self,
+        profiles: List[CandidateProfile],
+        project: ProjectDescription,
+        candidate_sim_matrix: np.ndarray,
+        candidate_ids: List[str],
+        project_similarities: Dict[str, float],
+    ) -> List[CandidateProfile]:
+
+        if not profiles:
             return []
-        
-        team = [sorted_by_fit[0]]
-        remaining = [p for p in filtered_profiles if p.id != sorted_by_fit[0].id]
-        
-        # Greedily add candidates until team size reached
-        while len(team) < project.team_size and remaining:
-            best_candidate = None
-            best_score = -1
-            
-            for candidate in remaining:
-                # Try adding this candidate
-                potential_team = team + [candidate]
-                
-                # Calculate score for this potential team
-                score = self.calculate_team_score(
-                    potential_team,
-                    candidate_sim_matrix,
-                    candidate_ids,
-                    project_similarities,
-                    project.required_skills
+
+        # gentle fit filter
+        filtered = [p for p in profiles if _safe_fit(project_similarities, p.id) >= self.fit_threshold]
+        if not filtered:
+            filtered = list(profiles)
+
+        # seed = best fit
+        filtered.sort(key=lambda p: _safe_fit(project_similarities, p.id), reverse=True)
+        team = [filtered[0]]
+        remaining = [p for p in filtered[1:]]
+
+        while len(team) < int(project.team_size) and remaining:
+            scored: List[Tuple[float, CandidateProfile]] = []
+            for cand in remaining:
+                scored.append((self._score_next(team, cand, project, candidate_sim_matrix, candidate_ids, project_similarities), cand))
+            scored.sort(key=lambda x: x[0], reverse=True)
+
+            shortlist = [c for _, c in scored[: max(1, self.rerank_top_k)]]
+
+            chosen_id = None
+            if self.use_llm_rerank and len(shortlist) >= 2:
+                chosen_id = llm_choose_best_candidate(
+                    team=team,
+                    shortlist=shortlist,
+                    project=project,
+                    project_similarities=project_similarities,
+                    sim_matrix=candidate_sim_matrix,
+                    candidate_ids_order=candidate_ids,
+                    model=self.llm_model,
                 )
-                
-                if score > best_score:
-                    best_score = score
-                    best_candidate = candidate
-            
-            if best_candidate:
-                team.append(best_candidate)
-                remaining.remove(best_candidate)
+
+            if chosen_id:
+                chosen = next((c for c in remaining if c.id == chosen_id), None)
+                if chosen is None:
+                    chosen = scored[0][1]
             else:
-                break
-        
-        logger.info(f"Team built with {len(team)} members. Score: {best_score:.3f}")
+                chosen = scored[0][1]
+
+            team.append(chosen)
+            remaining = [p for p in remaining if p.id != chosen.id]
+
         return team
 
-# Interface function
+
+
+# Interface function 
+
 def build_teams(
     profiles: List[CandidateProfile],
     project: ProjectDescription,
-    candidate_sim_matrix: np.array,
+    candidate_sim_matrix: np.ndarray,
     candidate_ids: List[str],
-    project_similarities: Dict[str, float]
+    project_similarities: Dict[str, float],
 ) -> List[List[CandidateProfile]]:
     """
-    Interface function for M3 module.
-    
-    Args:
-        profiles: List of candidate profiles
-        project: Project description
-        candidate_sim_matrix: Precomputed similarity matrix
-        candidate_ids: List of candidate IDs in order of matrix
-        project_similarities: Dictionary of candidate_id -> similarity score
-        
-    Returns:
-        List of teams (each team is list of CandidateProfile objects)
+    interface: returns List[List[CandidateProfile]].
     """
-    builder = TeamBuilder()
-    
-    # For now, return one team - can be extended to multiple teams
+    builder = TeamBuilderGenAI()
     team = builder.build_team_greedy(
-        profiles, project, candidate_sim_matrix, candidate_ids, project_similarities
+        profiles=profiles,
+        project=project,
+        candidate_sim_matrix=candidate_sim_matrix,
+        candidate_ids=candidate_ids,
+        project_similarities=project_similarities,
     )
-    
     return [team] if team else []
-
-if __name__ == "__main__":
-    """Test the team builder with sample data"""
-    # Create mock data for testing
-    profiles = [
-        CandidateProfile(
-            id="1",
-            name="Alice",
-            skills=["Python", "ML"],
-            skill_levels={"Python": "Advanced", "ML": "Intermediate"},
-            role="Data Scientist",
-            experience_years=3,
-            collaboration_style="Analytical",
-            availability_hours=40,
-            tools=[],
-            domains=[]
-        ),
-        CandidateProfile(
-            id="2",
-            name="Bob",
-            skills=["React", "JavaScript"],
-            skill_levels={"React": "Expert", "JavaScript": "Advanced"},
-            role="Frontend Developer",
-            experience_years=2,
-            collaboration_style="Creative",
-            availability_hours=35,
-            tools=[],
-            domains=[]
-        )
-    ]
-    
-    project = ProjectDescription(
-        id="p1",
-        title="Test Project",
-        description="A test project",
-        required_roles=["Data Scientist", "Frontend Developer"],
-        required_skills=["Python", "React"],
-        team_size=2,
-        duration_weeks=4,
-        priority_skills=[]
-    )
-    
-    # Mock similarity data
-    candidate_sim_matrix = np.array([[1.0, 0.2], [0.2, 1.0]])
-    candidate_ids = ["1", "2"]
-    project_similarities = {"1": 0.8, "2": 0.9}
-    
-    # Build team
-    teams = build_teams(profiles, project, candidate_sim_matrix, candidate_ids, project_similarities)
-    
-    print(f"Built {len(teams)} team(s)")
-    for i, team in enumerate(teams):
-        print(f"Team {i+1} members: {[member.name for member in team]}")
