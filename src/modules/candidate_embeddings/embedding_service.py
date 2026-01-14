@@ -7,9 +7,9 @@ from .repository import (
     save_dissimilarity
 )
 
-def generate_embeddings_and_dissimilarity(profile_path: Path) -> dict:
-    profiles = load_profiles(profile_path)
-
+def gen_cand_emb_dissim(profiles_path: Path):
+    
+    profiles = load_profiles(profiles_path)
     embeddings = embed_profiles(profiles)
     candidate_ids = [p["id"] for p in profiles]
 
@@ -18,11 +18,4 @@ def generate_embeddings_and_dissimilarity(profile_path: Path) -> dict:
     dissimilarity = cosine_dissimilarity_matrix(embeddings)
     save_dissimilarity(dissimilarity)
 
-    return {
-        "num_candidates": len(candidate_ids),
-        "artifacts": [
-            "candidate_embeddings.npy",
-            "candidate_dissimilarity.npy",
-            "candidate_ids.json"
-        ]
-    }
+    print("Candidate Embeddings and dissimilarity matrix generated and saved successfully.")

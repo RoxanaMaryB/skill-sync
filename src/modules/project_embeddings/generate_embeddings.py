@@ -1,24 +1,19 @@
-import os
-from utils import load_projects
-from embeddings import embed_projects
-from store_embeddings import save_project_embeddings
+from pathlib import Path
+from .utils import load_projects
+from .embeddings import embed_projects
+from .store_embeddings import save_project_embeddings
+from .compute_similarity import compute_store_similarity
 
-# Get the directory of the current script
-current_dir = os.path.dirname(os.path.abspath(__file__))
+def gen_poj_emb_sim(projects_path: Path):
 
-# Move up 3 levels
-# (src/modules/project_embeddings -> src/modules -> src -> root)
-root_dir = os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))
 
-# Combine with the data path
-data_path = os.path.join(root_dir, "data", "sample", "sample_projects.json")
+    projects = load_projects(projects_path)
 
-projects = load_projects(data_path)
+    embeddings = embed_projects(projects)
 
-embeddings = embed_projects(projects)
+    project_ids = [p["id"] for p in projects]
 
-project_ids = [p["id"] for p in projects]
+    save_project_embeddings(embeddings, project_ids)    
+    print("Project embeddings and similarity matrix generated and saved successfully.")
 
-save_project_embeddings(embeddings, project_ids)
-
-print("Project embeddings generated and stored.")
+    compute_store_similarity()

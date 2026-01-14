@@ -2,7 +2,7 @@ import numpy as np
 import json
 import os
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), "../../../data")
+DATA_DIR = os.path.join(os.path.dirname(__file__), "../../../data/artifacts")
 
 def save_similarity(sim_matrix, candidate_ids, project_ids,
                     npy_name="candidate_project_similarity.npy",

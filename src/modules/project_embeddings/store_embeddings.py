@@ -2,7 +2,7 @@ import numpy as np
 import json
 import os
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), "../../../data")
+DATA_DIR = os.path.join(os.path.dirname(__file__), "../../../data/artifacts")
 
 def save_project_embeddings(embeddings, project_ids):
     np.save(os.path.join(DATA_DIR, "project_embeddings.npy"), embeddings)
