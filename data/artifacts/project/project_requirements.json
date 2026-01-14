@@ -1,0 +1,22 @@
+{
+  "technical_requirements": {
+    "skills": [
+      "React",
+      "Node.js",
+      "PostgreSQL",
+      "Amazon Web Services (AWS)"
+    ],
+    "tools": [
+      "Docker"
+    ],
+    "roles": [
+      "Developer, front-end",
+      "Developer, back-end",
+      "Cloud infrastructure engineer"
+    ]
+  },
+  "constraints": {
+    "team_size": 4,
+    "min_availability_hours_per_week": 10
+  }
+}
