@@ -1,0 +1,1 @@
+Build a React and Node.js web app using PostgreSQL on AWS. Use Docker for deployment.
