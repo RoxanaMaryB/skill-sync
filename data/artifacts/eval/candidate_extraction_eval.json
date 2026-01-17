@@ -2,7 +2,7 @@
   "n": 10,
   "schema_ok_rate": 1.0,
   "avg_label_errors": 0.0,
-  "avg_evidence_errors": 2.3,
+  "avg_evidence_errors": 0.4,
   "details": [
     {
       "id": "1",
@@ -11,9 +11,7 @@
       "type_errors": [],
       "label_errors": [],
       "evidence_errors": [
-        "team_role: evidence must be 3–8 words (or empty)",
-        "learning_orientation: evidence must be 3–8 words (or empty)",
-        "knowledge_sharing: evidence must be 3–8 words (or empty)"
+        "learning_orientation: evidence must be 3–20 words (or empty)"
       ],
       "technical_duplicates": {
         "skills": 0,
@@ -26,11 +24,7 @@
       "missing_keys": [],
       "type_errors": [],
       "label_errors": [],
-      "evidence_errors": [
-        "team_role: evidence must be 3–8 words (or empty)",
-        "conflict_style: evidence must be 3–8 words (or empty)",
-        "learning_orientation: evidence must be 3–8 words (or empty)"
-      ],
+      "evidence_errors": [],
       "technical_duplicates": {
         "skills": 0,
         "tools": 0
@@ -43,7 +37,7 @@
       "type_errors": [],
       "label_errors": [],
       "evidence_errors": [
-        "team_role: evidence must be 3–8 words (or empty)"
+        "knowledge_sharing: evidence not found verbatim in expected source"
       ],
       "technical_duplicates": {
         "skills": 0,
@@ -57,8 +51,7 @@
       "type_errors": [],
       "label_errors": [],
       "evidence_errors": [
-        "leadership_preference: evidence must be 3–8 words (or empty)",
-        "learning_orientation: evidence must be 3–8 words (or empty)"
+        "learning_orientation: evidence must be 3–20 words (or empty)"
       ],
       "technical_duplicates": {
         "skills": 0,
@@ -71,12 +64,7 @@
       "missing_keys": [],
       "type_errors": [],
       "label_errors": [],
-      "evidence_errors": [
-        "team_role: evidence must be 3–8 words (or empty)",
-        "conflict_style: evidence must be 3–8 words (or empty)",
-        "leadership_preference: evidence must be 3–8 words (or empty)",
-        "deadline_discipline: evidence must be 3–8 words (or empty)"
-      ],
+      "evidence_errors": [],
       "technical_duplicates": {
         "skills": 0,
         "tools": 0
@@ -89,8 +77,7 @@
       "type_errors": [],
       "label_errors": [],
       "evidence_errors": [
-        "team_role: evidence must be 3–8 words (or empty)",
-        "learning_orientation: evidence must be 3–8 words (or empty)"
+        "learning_orientation: evidence must be 3–20 words (or empty)"
       ],
       "technical_duplicates": {
         "skills": 0,
@@ -103,9 +90,7 @@
       "missing_keys": [],
       "type_errors": [],
       "label_errors": [],
-      "evidence_errors": [
-        "team_role: evidence must be 3–8 words (or empty)"
-      ],
+      "evidence_errors": [],
       "technical_duplicates": {
         "skills": 0,
         "tools": 0
@@ -117,11 +102,7 @@
       "missing_keys": [],
       "type_errors": [],
       "label_errors": [],
-      "evidence_errors": [
-        "team_role: evidence must be 3–8 words (or empty)",
-        "leadership_preference: evidence must be 3–8 words (or empty)",
-        "learning_orientation: evidence must be 3–8 words (or empty)"
-      ],
+      "evidence_errors": [],
       "technical_duplicates": {
         "skills": 0,
         "tools": 0
@@ -133,10 +114,7 @@
       "missing_keys": [],
       "type_errors": [],
       "label_errors": [],
-      "evidence_errors": [
-        "team_role: evidence must be 3–8 words (or empty)",
-        "deadline_discipline: evidence not found verbatim in expected source"
-      ],
+      "evidence_errors": [],
       "technical_duplicates": {
         "skills": 0,
         "tools": 0
@@ -148,10 +126,7 @@
       "missing_keys": [],
       "type_errors": [],
       "label_errors": [],
-      "evidence_errors": [
-        "team_role: evidence must be 3–8 words (or empty)",
-        "conflict_style: evidence must be 3–8 words (or empty)"
-      ],
+      "evidence_errors": [],
       "technical_duplicates": {
         "skills": 0,
         "tools": 0

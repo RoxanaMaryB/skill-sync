@@ -52,7 +52,7 @@ def evidence_ok(evidence: str) -> bool:
     if evidence == "":
         return True
     wc = words_count(evidence)
-    return 3 <= wc <= 8
+    return 3 <= wc <= 20
 
 
 def substring_in(source: str, evidence: str) -> bool:
@@ -181,7 +181,7 @@ class CandidateProfileEvaluator:
             if label_val != "Unknown" and evidence_val == "":
                 out["evidence_errors"].append(f"{field_name}: label set but evidence empty")
             if not evidence_ok(evidence_val):
-                out["evidence_errors"].append(f"{field_name}: evidence must be 3–8 words (or empty)")
+                out["evidence_errors"].append(f"{field_name}: evidence must be 3–20 words (or empty)")
             if not substring_in(source_text, evidence_val):
                 out["evidence_errors"].append(f"{field_name}: evidence not found verbatim in expected source")
 

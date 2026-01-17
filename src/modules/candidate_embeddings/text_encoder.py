@@ -2,25 +2,55 @@ from sentence_transformers import SentenceTransformer
 
 _model = SentenceTransformer("all-MiniLM-L6-v2")
 
+def clean_list(values):
+    if not values:
+        return []
+    out = []
+    seen = set()
+    for v in values:
+        if v is None:
+            continue
+        s = str(v).strip()
+        if not s:
+            continue
+        key = s.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(s)
+    return sorted(out, key=lambda x: x.lower())
+
+def clean_str(v):
+    if v is None:
+        return ""
+    return str(v).strip()
+
 def profile_to_text(profile: dict) -> str:
-    # Extracting data from nested dictionaries
-    tech = profile.get("technical", {})
-    meta = profile.get("metadata", {})
-    collab = profile.get("collaboration", {})
+    tech = profile.get("technical", {}) or {}
+    meta = profile.get("metadata", {}) or {}
+    collab = profile.get("collaboration", {}) or {}
+    pers = profile.get("personality", {}) or {}
 
-    # Formatting lists into strings
-    skills = ", ".join(tech.get("skills", []))
-    tools = ", ".join(tech.get("tools", []))
+    skills = clean_list(tech.get("skills", []))
+    tools = clean_list(tech.get("tools", []))
 
-    return (
-        f"{meta.get('dev_type')} with {meta.get('work_experience_years')} years "
-        f"in {meta.get('industry')}. "
-        f"Skills: {skills}. "
-        f"Tools: {tools}. "
-        f"Belbin role: {profile.get('personality', {}).get('Belbin_team_role')}. "
-        f"Communication style: {collab.get('communication_style')}. "
-        f"Availability: {profile.get('constraints', {}).get('weekly_availability_hours')} hours/week."
-    )
+    dev_type = clean_str(meta.get("dev_type"))
+    belbin = clean_str(pers.get("Belbin_team_role"))
+    comms = clean_str(collab.get("communication_style"))
+
+    parts = []
+    if dev_type:
+        parts.append(f"Developer type: {dev_type}")
+    if skills:
+        parts.append("Skills: " + ", ".join(skills))
+    if tools:
+        parts.append("Tools: " + ", ".join(tools))
+    if belbin:
+        parts.append(f"Belbin role: {belbin}")
+    if comms:
+        parts.append(f"Communication style: {comms}")
+
+    return ". ".join(parts) + "." if parts else "Candidate profile: Unknown."
 
 def embed_profiles(profiles: list[dict]):
     texts = [profile_to_text(p) for p in profiles]

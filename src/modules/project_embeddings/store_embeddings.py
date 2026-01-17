@@ -25,3 +25,4 @@ def load_candidate_embeddings():
     with open(os.path.join(DATA_DIR, "candidate_ids.json"), "r") as f:
         candidate_ids = json.load(f)
     return embeddings, candidate_ids
+

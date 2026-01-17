@@ -1,0 +1,44 @@
+{
+  "rows": [
+    {
+      "Team": 1,
+      "Avg fit": 0.3963,
+      "Coverage (skills and tools) %": 100.0,
+      "Avg internal sim": 0.8168,
+      "Avg internal dissim": 0.1832,
+      "Missing roles (list)": "None",
+      "Missing skills and tools (list)": "None",
+      "Members": "4, 11, 13, 1, 15"
+    },
+    {
+      "Team": 2,
+      "Avg fit": 0.3872,
+      "Coverage (skills and tools) %": 100.0,
+      "Avg internal sim": 0.7883,
+      "Avg internal dissim": 0.2117,
+      "Missing roles (list)": "None",
+      "Missing skills and tools (list)": "None",
+      "Members": "7, 14, 6, 10, 3"
+    },
+    {
+      "Team": 3,
+      "Avg fit": 0.3921,
+      "Coverage (skills and tools) %": 100.0,
+      "Avg internal sim": 0.8048,
+      "Avg internal dissim": 0.1952,
+      "Missing roles (list)": "None",
+      "Missing skills and tools (list)": "None",
+      "Members": "19, 16, 2, 9, 12"
+    },
+    {
+      "Team": 4,
+      "Avg fit": 0.3801,
+      "Coverage (skills and tools) %": 50.0,
+      "Avg internal sim": 0.8213,
+      "Avg internal dissim": 0.1787,
+      "Missing roles (list)": "None",
+      "Missing skills and tools (list)": "c++",
+      "Members": "8, 5, 20, 17, 18"
+    }
+  ]
+}
