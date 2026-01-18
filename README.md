@@ -1,11 +1,6 @@
 # SkillSync - AI-Powered Team Formation
 
-## 👥 Team 45
-- Shahzad (M1): Candidate embeddings & similarity
-- Roxana (M2): Project embeddings & candidate-project fit
-- Ana (M3): Team construction algorithm
-- Șaban (M4): Architecture & UI (Streamlit)
-- Noor (M5): JSON extraction & team explanations
+
 
 ## 🚀 Quick Start
 1. Install: `pip install -r requirements.txt`
