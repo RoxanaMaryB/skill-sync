@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import json
@@ -36,8 +35,8 @@ Return EXACTLY this JSON schema (no extra keys):
 }
 
 Rules:
-- skills: programming languages, frameworks, libraries, databases, cloud platforms.
-- tools: developer tools (IDEs, CLIs, package managers, build/test/deploy tools).
+- skills: programming languages, frameworks, libraries, databases, cloud platforms, protocols.
+- tools: developer tools ONLY (IDEs, notebooks, CLIs, build/test/deploy tools).
 - roles: required project roles (STRICT: only from the allowed role labels list below).
 - Extract ONLY what is supported by the text (no guessing).
 - Return lists with unique items (no duplicates).
@@ -49,16 +48,25 @@ CRITICAL INTERPRETATION RULE:
 - Lists in this prompt exist ONLY to normalize spelling/casing/spacing/punctuation for consistency (technologies).
 - Do NOT omit a clearly mentioned technology just because it is not listed below.
 
+CATEGORY ENFORCEMENT RULES:
+- Cloud platforms (e.g., AWS, GCP, Azure, OCI) MUST ALWAYS be classified as "skills", NEVER as "tools".
+- Libraries and frameworks (e.g., FAISS, NumPy, SciPy, PyTorch, Transformers) MUST be classified as "skills".
+- Communication protocols explicitly mentioned (e.g., MQTT) MUST be classified as "skills".
+- "tools" must ONLY include IDEs, notebooks, build systems, test frameworks, and CLIs.
+
 Category guidance using Stack Overflow 2024 sections (for classification only):
-- "skills" may include items that belong to:
+- "skills" may include:
   1) Programming, scripting, and markup languages
   2) Web frameworks and web technologies
   3) Database environments
   4) Cloud platforms
-  5) Other frameworks and libraries (miscellaneous)
-- "tools" may include items that belong to:
-  1) Developer tools for compiling, building and testing
-  2) Collaborative work management and/or code documentation tools
+  5) Libraries and frameworks
+  6) Communication protocols
+
+- "tools" may include:
+  1) IDEs and editors
+  2) Notebooks
+  3) Build, test, deploy, and CLI tools
 
 Mapping / normalization rule:
 - If the text mentions a technology using a variant/typo/alias, you MAY normalize it ONLY if the target is unambiguous.
@@ -74,40 +82,44 @@ ROLES (STRICT — LITERAL VALUES ONLY):
 - Do NOT output "Other (please specify):".
 - If no role from the list is clearly supported by the project description, return an empty roles list.
 
+ROLE PRIORITY RULE:
+- If "Developer, full-stack" is added, do NOT add "Developer, front-end" or "Developer, back-end".
+
 ROLE MAPPING RULES (ONLY TO SELECT FROM THE ALLOWED ROLE LABELS BELOW):
-Apply these ONLY when the project description explicitly mentions the related technology/responsibility.
+Apply these ONLY when the project description explicitly mentions the related technology or responsibility.
 
 - If the text mentions a frontend framework or frontend/UI work (e.g., React, Vue, Angular, "frontend", "UI"):
   add: "Developer, front-end"
 
-- If the text mentions backend services/server/backend work (e.g., "backend", "server", "API services", Python services, Node.js backend, Java backend):
+- If the text mentions backend services/server/backend work (e.g., "backend", "server", "API services",
+  Python services, Node.js backend, Java backend):
   add: "Developer, back-end"
 
-- If the text mentions mobile app/mobile controls (e.g., React Native, iOS, Android, "mobile"):
+- If the text explicitly mentions "full-stack" or "full stack":
+  add: "Developer, full-stack"
+
+- If the text mentions mobile app development (e.g., React Native, iOS, Android, "mobile"):
   add: "Developer, mobile"
 
-- If the text mentions embedded/IoT devices (e.g., MQTT, "IoT", "smart home devices", embedded devices):
+- If the text mentions embedded systems, IoT, firmware, or device-level programming:
   add: "Developer, embedded applications or devices"
 
-- If the text mentions Machine Learning or NLP for AI capabilities (e.g., "Machine Learning", "ML", "NLP"):
+- If the text mentions Machine Learning, NLP, or AI model training:
   add: "Data scientist or machine learning specialist"
 
-- If the text mentions SQL/database storage/analytics/streaming pipelines (e.g., SQL, PostgreSQL, "analytics storage", Kafka pipelines):
+- If the text mentions SQL/databases/data pipelines/streaming systems:
   add: "Data engineer"
 
-- If the text mentions cloud infrastructure/migration/hosting (e.g., AWS, GCP, Azure, "cloud migration", "cloud hosting"):
+- If the text mentions ANY cloud platform name (AWS, Amazon Web Services, GCP, Google Cloud, Azure, OCI):
   add: "Cloud infrastructure engineer"
 
-- If the text mentions Docker/Kubernetes/orchestration/operations:
+- If the text explicitly mentions Docker, Kubernetes, containerization, CI/CD, or orchestration:
   add: "DevOps specialist"
 
 - If the text explicitly mentions SRE or "site reliability":
   add: "Engineer, site reliability"
 
 TARGETED CANONICALIZATION PATCH (NORMALIZATION ONLY — NOT A WHITELIST):
-These specific Stack Overflow 2024 labels often appear with spacing/punctuation/case variants.
-If (and only if) the project description clearly refers to one of these items, output the EXACT label below.
-Otherwise, ignore this list completely and extract normally.
 
 Languages / markup / shell:
 - Bash/Shell (all shells)
@@ -155,10 +167,6 @@ Other frameworks and libraries:
 - Spring Framework
 - Torch/PyTorch
 
-Game engines / platforms:
-- Unity 3D
-- Unreal Engine
-
 IDEs / editors / developer environments:
 - Visual Studio Solution
 - Android Studio
@@ -167,33 +175,20 @@ IDEs / editors / developer environments:
 - Qt Creator
 - Rad Studio (Delphi, C++ Builder)
 
-Collaborative work management and/or code documentation tools:
+Collaborative tools:
 - GitHub Discussions
-  NOTE: If excluded by the Exclusions rule, then OMIT it even if mentioned.
 
-STRICTNESS RULE (to limit hallucinations):
-- Do NOT output labels unless the project description explicitly supports them.
-- Do NOT map unrelated terms to the labels above.
-- If ambiguous, omit.
-
-Output rule:
-- Do NOT output "Other (please specify)".
-- Do NOT output section headings.
-- Output only the extracted values.
-
-Normalization rules (apply ONLY when clearly applicable):
+Normalization rules:
 1) Cloud platform normalization
-- If the text mentions "AWS" or "Amazon Web Services", output: "Amazon Web Services (AWS)"
+- If the text mentions "AWS", output: "Amazon Web Services (AWS)"
 - If the text mentions "GCP" or "Google Cloud Platform", output: "Google Cloud"
 - If the text mentions "OCI" or "Oracle Cloud", output: "Oracle Cloud Infrastructure (OCI)"
 - If the text mentions "IBM Cloud" or "Watson", output: "IBM Cloud Or Watson"
 - If the text mentions "DigitalOcean", output: "Digital Ocean"
 
-2) .NET / Visual Basic normalization
+2) .NET normalization
 - If the text mentions ".NET Core" or "ASP.NET Core", output: "ASP.NET CORE"
-- If the text mentions "VB.NET" or "Visual Basic .NET", output: "Visual Basic (.Net)"
-- If the text mentions ".NET 5" ".NET 6" ".NET 7" ".NET 8" or "modern .NET", output: ".NET (5+)"
-- If the text mentions ".NET Framework", output: ".NET Framework (1.0 - 4.8)"
+- If the text mentions ".NET 5+", output: ".NET (5+)"
 
 3) Shell normalization
 - If the text mentions "Bash" or "Shell scripting", output: "Bash/Shell (all shells)"
@@ -201,40 +196,37 @@ Normalization rules (apply ONLY when clearly applicable):
 4) PyTorch normalization
 - If the text mentions "PyTorch" or "Torch", output: "Torch/PyTorch"
 
-ALLOWED ROLE LABELS (AUTHORITATIVE — ROLES MAY ONLY BE FROM THIS LIST):
+ALLOWED ROLE LABELS (AUTHORITATIVE):
 - Developer, full-stack
-- Other (please specify):
 - Developer, back-end
-- Academic researcher
-- Developer, desktop or enterprise applications
-- Engineering manager
-- Senior Executive (C-Suite, VP, etc.)
-- Blockchain
-- Research & Development role
-- Developer, QA or test
-- Student
-- DevOps specialist
-- Educator
-- Developer, mobile
 - Developer, front-end
+- Developer, mobile
+- Developer, embedded applications or devices
+- DevOps specialist
 - Engineer, site reliability
+- Cloud infrastructure engineer
+- Data engineer
+- Data scientist or machine learning specialist
+- Developer, AI
+- Developer, QA or test
+- Developer, desktop or enterprise applications
+- Product manager
 - Project manager
 - Security professional
 - Data or business analyst
-- Developer, embedded applications or devices
-- Developer, AI
-- Cloud infrastructure engineer
-- Data engineer
+- Research & Development role
+- Academic researcher
+- Educator
+- Student
 - Developer Advocate
-- Data scientist or machine learning specialist
-- Product manager
+- Engineering manager
+- Senior Executive (C-Suite, VP, etc.)
 
-Exclusions (ASSUME EVERYONE HAS THESE):
-- Do NOT include any Git/GitHub/version control items in tools or skills:
-  "Git", "GitHub", "GitHub Actions", "GitLab", "Bitbucket", "SVN", "Mercurial".
+Exclusions:
+- Do NOT include any Git/GitHub/version control items in tools or skills.
 - Do NOT output "Other (please specify):" in roles.
 
-If none found: empty lists.
+If none found: return empty lists.
 """
 
 
@@ -272,10 +264,3 @@ class ProjectSchemaExtractor:
         )
         raw = resp.choices[0].message.content
         return self.safe_json_loads(raw)
-
-
-
-
-
-
-

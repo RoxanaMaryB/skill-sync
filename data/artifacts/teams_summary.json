@@ -1,40 +1,48 @@
 {
   "n_teams": 4,
   "team_size": 5,
-  "required_items_count": 2,
-  "required_roles_count": 0,
+  "required_items_count": 3,
+  "required_roles_count": 3,
   "teams": [
     {
       "team_number": 1,
       "size": 5,
       "coverage_percent": 100.0,
       "covered_items": [
-        "c++",
-        "python"
+        "amazon web services (aws)",
+        "docker",
+        "postgresql"
       ],
       "missing_items": [],
-      "missing_roles": [],
-      "avg_fit": 0.3963,
-      "avg_internal_similarity": 0.8168,
+      "missing_roles": [
+        "Developer, back-end",
+        "Cloud infrastructure engineer"
+      ],
+      "avg_fit": 0.5123,
+      "avg_internal_similarity": 0.8075,
       "member_ids": [
-        "4",
-        "11",
-        "13",
-        "1",
-        "15"
+        "12",
+        "2",
+        "14",
+        "9",
+        "16"
       ],
       "technical_coverage_summary": {
         "required_items_specified": true,
-        "required_roles_specified": false,
+        "required_roles_specified": true,
         "items_covered": true,
-        "roles_covered": null,
+        "roles_covered": false,
         "coverage_percent": 100.0,
         "covered_items": [
-          "c++",
-          "python"
+          "amazon web services (aws)",
+          "docker",
+          "postgresql"
         ],
         "missing_items": [],
-        "missing_roles": []
+        "missing_roles": [
+          "Developer, back-end",
+          "Cloud infrastructure engineer"
+        ]
       }
     },
     {
@@ -42,32 +50,42 @@
       "size": 5,
       "coverage_percent": 100.0,
       "covered_items": [
-        "c++",
-        "python"
+        "amazon web services (aws)",
+        "docker",
+        "postgresql"
       ],
       "missing_items": [],
-      "missing_roles": [],
-      "avg_fit": 0.3872,
-      "avg_internal_similarity": 0.7883,
+      "missing_roles": [
+        "Developer, back-end",
+        "Cloud infrastructure engineer",
+        "DevOps specialist"
+      ],
+      "avg_fit": 0.509,
+      "avg_internal_similarity": 0.8049,
       "member_ids": [
-        "7",
-        "14",
-        "6",
+        "5",
+        "13",
         "10",
-        "3"
+        "8",
+        "7"
       ],
       "technical_coverage_summary": {
         "required_items_specified": true,
-        "required_roles_specified": false,
+        "required_roles_specified": true,
         "items_covered": true,
-        "roles_covered": null,
+        "roles_covered": false,
         "coverage_percent": 100.0,
         "covered_items": [
-          "c++",
-          "python"
+          "amazon web services (aws)",
+          "docker",
+          "postgresql"
         ],
         "missing_items": [],
-        "missing_roles": []
+        "missing_roles": [
+          "Developer, back-end",
+          "Cloud infrastructure engineer",
+          "DevOps specialist"
+        ]
       }
     },
     {
@@ -75,67 +93,85 @@
       "size": 5,
       "coverage_percent": 100.0,
       "covered_items": [
-        "c++",
-        "python"
+        "amazon web services (aws)",
+        "docker",
+        "postgresql"
       ],
       "missing_items": [],
-      "missing_roles": [],
-      "avg_fit": 0.3921,
-      "avg_internal_similarity": 0.8048,
+      "missing_roles": [
+        "Developer, back-end",
+        "Cloud infrastructure engineer",
+        "DevOps specialist"
+      ],
+      "avg_fit": 0.4971,
+      "avg_internal_similarity": 0.8027,
       "member_ids": [
+        "1",
+        "18",
+        "15",
         "19",
-        "16",
-        "2",
-        "9",
-        "12"
+        "3"
       ],
       "technical_coverage_summary": {
         "required_items_specified": true,
-        "required_roles_specified": false,
+        "required_roles_specified": true,
         "items_covered": true,
-        "roles_covered": null,
+        "roles_covered": false,
         "coverage_percent": 100.0,
         "covered_items": [
-          "c++",
-          "python"
+          "amazon web services (aws)",
+          "docker",
+          "postgresql"
         ],
         "missing_items": [],
-        "missing_roles": []
+        "missing_roles": [
+          "Developer, back-end",
+          "Cloud infrastructure engineer",
+          "DevOps specialist"
+        ]
       }
     },
     {
       "team_number": 4,
       "size": 5,
-      "coverage_percent": 50.0,
+      "coverage_percent": 100.0,
       "covered_items": [
-        "python"
+        "amazon web services (aws)",
+        "docker",
+        "postgresql"
       ],
-      "missing_items": [
-        "c++"
+      "missing_items": [],
+      "missing_roles": [
+        "Developer, back-end",
+        "Cloud infrastructure engineer",
+        "DevOps specialist"
       ],
-      "missing_roles": [],
-      "avg_fit": 0.3801,
-      "avg_internal_similarity": 0.8213,
+      "avg_fit": 0.4733,
+      "avg_internal_similarity": 0.8072,
       "member_ids": [
-        "8",
-        "5",
         "20",
+        "6",
+        "4",
         "17",
-        "18"
+        "11"
       ],
       "technical_coverage_summary": {
         "required_items_specified": true,
-        "required_roles_specified": false,
-        "items_covered": false,
-        "roles_covered": null,
-        "coverage_percent": 50.0,
+        "required_roles_specified": true,
+        "items_covered": true,
+        "roles_covered": false,
+        "coverage_percent": 100.0,
         "covered_items": [
-          "python"
+          "amazon web services (aws)",
+          "docker",
+          "postgresql"
         ],
-        "missing_items": [
-          "c++"
-        ],
-        "missing_roles": []
+        "missing_items": [],
+        "missing_roles": [
+          "Developer, back-end",
+          "Cloud infrastructure engineer",
+          "DevOps specialist"
+        ]
       }
     }
   ]

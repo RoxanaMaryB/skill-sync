@@ -458,6 +458,11 @@ with tab_run:
                 st.success("Project requirements saved.")
                 st.code(str(proj_req_path))
                 st.json(project_requirements)
+                st.info(
+                "Note: Project roles are restricted to the Stack Overflow 2024 "
+                "Developer Type schema. If the description does not clearly match "
+                "a survey role, the roles list may be empty."
+                )
 
     st.divider()
 

@@ -2,43 +2,43 @@
   "rows": [
     {
       "Team": 1,
-      "Avg fit": 0.3963,
+      "Avg fit": 0.5123,
       "Coverage (skills and tools) %": 100.0,
-      "Avg internal sim": 0.8168,
-      "Avg internal dissim": 0.1832,
-      "Missing roles (list)": "None",
+      "Avg internal sim": 0.8075,
+      "Avg internal dissim": 0.1925,
+      "Missing roles (list)": "Developer, back-end, Cloud infrastructure engineer",
       "Missing skills and tools (list)": "None",
-      "Members": "4, 11, 13, 1, 15"
+      "Members": "12, 2, 14, 9, 16"
     },
     {
       "Team": 2,
-      "Avg fit": 0.3872,
+      "Avg fit": 0.509,
       "Coverage (skills and tools) %": 100.0,
-      "Avg internal sim": 0.7883,
-      "Avg internal dissim": 0.2117,
-      "Missing roles (list)": "None",
+      "Avg internal sim": 0.8049,
+      "Avg internal dissim": 0.1951,
+      "Missing roles (list)": "Developer, back-end, Cloud infrastructure engineer, DevOps specialist",
       "Missing skills and tools (list)": "None",
-      "Members": "7, 14, 6, 10, 3"
+      "Members": "5, 13, 10, 8, 7"
     },
     {
       "Team": 3,
-      "Avg fit": 0.3921,
+      "Avg fit": 0.4971,
       "Coverage (skills and tools) %": 100.0,
-      "Avg internal sim": 0.8048,
-      "Avg internal dissim": 0.1952,
-      "Missing roles (list)": "None",
+      "Avg internal sim": 0.8027,
+      "Avg internal dissim": 0.1973,
+      "Missing roles (list)": "Developer, back-end, Cloud infrastructure engineer, DevOps specialist",
       "Missing skills and tools (list)": "None",
-      "Members": "19, 16, 2, 9, 12"
+      "Members": "1, 18, 15, 19, 3"
     },
     {
       "Team": 4,
-      "Avg fit": 0.3801,
-      "Coverage (skills and tools) %": 50.0,
-      "Avg internal sim": 0.8213,
-      "Avg internal dissim": 0.1787,
-      "Missing roles (list)": "None",
-      "Missing skills and tools (list)": "c++",
-      "Members": "8, 5, 20, 17, 18"
+      "Avg fit": 0.4733,
+      "Coverage (skills and tools) %": 100.0,
+      "Avg internal sim": 0.8072,
+      "Avg internal dissim": 0.1928,
+      "Missing roles (list)": "Developer, back-end, Cloud infrastructure engineer, DevOps specialist",
+      "Missing skills and tools (list)": "None",
+      "Members": "20, 6, 4, 17, 11"
     }
   ]
 }

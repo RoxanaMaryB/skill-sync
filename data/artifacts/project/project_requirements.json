@@ -1,11 +1,16 @@
 {
   "technical_requirements": {
     "skills": [
-      "C++",
-      "Python"
+      "PostgreSQL",
+      "Amazon Web Services (AWS)",
+      "Docker"
     ],
     "tools": [],
-    "roles": []
+    "roles": [
+      "Developer, back-end",
+      "Cloud infrastructure engineer",
+      "DevOps specialist"
+    ]
   },
   "constraints": {
     "team_size": 5,

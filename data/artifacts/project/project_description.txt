@@ -1,1 +1,3 @@
-c++,python
+We are building a backend service that uses PostgreSQL for data storage.
+The application will be deployed on AWS using Docker containers.
+

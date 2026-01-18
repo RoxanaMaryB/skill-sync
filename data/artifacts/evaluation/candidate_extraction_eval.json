@@ -10,9 +10,7 @@
       "missing_keys": [],
       "type_errors": [],
       "label_errors": [],
-      "evidence_errors": [
-        "learning_orientation: evidence must be 3–20 words (or empty)"
-      ],
+      "evidence_errors": [],
       "technical_duplicates": {
         "skills": 0,
         "tools": 0
@@ -24,7 +22,9 @@
       "missing_keys": [],
       "type_errors": [],
       "label_errors": [],
-      "evidence_errors": [],
+      "evidence_errors": [
+        "learning_orientation: evidence must be 3–20 words (or empty)"
+      ],
       "technical_duplicates": {
         "skills": 0,
         "tools": 0
@@ -76,7 +76,9 @@
       "missing_keys": [],
       "type_errors": [],
       "label_errors": [],
-      "evidence_errors": [],
+      "evidence_errors": [
+        "learning_orientation: evidence must be 3–20 words (or empty)"
+      ],
       "technical_duplicates": {
         "skills": 0,
         "tools": 0
@@ -164,10 +166,7 @@
       "missing_keys": [],
       "type_errors": [],
       "label_errors": [],
-      "evidence_errors": [
-        "knowledge_sharing: evidence must be 3–20 words (or empty)",
-        "knowledge_sharing: evidence not found verbatim in expected source"
-      ],
+      "evidence_errors": [],
       "technical_duplicates": {
         "skills": 0,
         "tools": 0
@@ -193,7 +192,9 @@
       "missing_keys": [],
       "type_errors": [],
       "label_errors": [],
-      "evidence_errors": [],
+      "evidence_errors": [
+        "learning_orientation: evidence must be 3–20 words (or empty)"
+      ],
       "technical_duplicates": {
         "skills": 0,
         "tools": 0
