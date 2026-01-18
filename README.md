@@ -14,7 +14,6 @@
 See `docs/architecture.md` for detailed architecture.
 
 ## 🔧 Development
-- Each member works in their `src/modules/memberX_*` directory
 - Use `shared/interfaces.py` for module communication
 - Create PRs for integration
 
