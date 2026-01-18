@@ -4,8 +4,11 @@
 
 ## 🚀 Quick Start
 1. Install: `pip install -r requirements.txt`
-2. Run UI: `streamlit run src/modules/member4_ui/app.py`
-3. Test: `python tests/integration_test.py`
+2. Set environment variables
+   export OPENROUTER_API_KEY="your_key_here"
+
+3. Run UI: `streamlit run src/modules/member4_ui/app.py`
+4. Test: `python tests/integration_test.py`
 
 ## 📁 Project Structure
 See `docs/architecture.md` for detailed architecture.
