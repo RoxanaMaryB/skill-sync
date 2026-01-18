@@ -99,9 +99,8 @@ Instead, we evaluate quality via:
 
 ## Non-GenAI Components
 - Embeddings (SentenceTransformer)
-- Similarity + dissimilarity matrices
 - Team-building heuristic
-- Deterministic evaluators and dashboard
+
 
 ---
 
