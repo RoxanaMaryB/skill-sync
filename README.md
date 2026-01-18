@@ -49,7 +49,7 @@ The system:
   - constraints (availability)
 - Also saves: `candidate_profiles_with_evidence.json` (evidence snippets)
 
-### 2) Candidate Embeddings + Diversity (Non-GenAI)
+### 2) Candidate Embeddings + Diversity 
 - Encodes candidate profiles to embeddings (SentenceTransformer)
 - Computes cosine dissimilarity matrix (candidate–candidate) for diversity
 
@@ -59,11 +59,11 @@ The system:
   - required roles / skills / tools
   - constraints (team size, min availability)
 
-### 4) Candidate–Project Similarity (Non-GenAI)
+### 4) Candidate–Project Similarity 
 - Embeds project requirements
 - Computes cosine similarity between candidate embeddings and project embedding
 
-### 5) Team Builder (Non-GenAI)
+### 5) Team Builder 
 - Builds teams using:
   - fit to project (candidate–project similarity)
   - internal diversity (candidate–candidate dissimilarity)
