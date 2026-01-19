@@ -2,43 +2,13 @@
   "rows": [
     {
       "Team": 1,
-      "Avg fit": 0.5123,
-      "Coverage (skills and tools) %": 100.0,
-      "Avg internal sim": 0.8075,
-      "Avg internal dissim": 0.1925,
-      "Missing roles (list)": "Developer, back-end, Cloud infrastructure engineer",
-      "Missing skills and tools (list)": "None",
-      "Members": "12, 2, 14, 9, 16"
-    },
-    {
-      "Team": 2,
-      "Avg fit": 0.509,
-      "Coverage (skills and tools) %": 100.0,
-      "Avg internal sim": 0.8049,
-      "Avg internal dissim": 0.1951,
-      "Missing roles (list)": "Developer, back-end, Cloud infrastructure engineer, DevOps specialist",
-      "Missing skills and tools (list)": "None",
-      "Members": "5, 13, 10, 8, 7"
-    },
-    {
-      "Team": 3,
-      "Avg fit": 0.4971,
-      "Coverage (skills and tools) %": 100.0,
-      "Avg internal sim": 0.8027,
-      "Avg internal dissim": 0.1973,
-      "Missing roles (list)": "Developer, back-end, Cloud infrastructure engineer, DevOps specialist",
-      "Missing skills and tools (list)": "None",
-      "Members": "1, 18, 15, 19, 3"
-    },
-    {
-      "Team": 4,
-      "Avg fit": 0.4733,
-      "Coverage (skills and tools) %": 100.0,
-      "Avg internal sim": 0.8072,
-      "Avg internal dissim": 0.1928,
-      "Missing roles (list)": "Developer, back-end, Cloud infrastructure engineer, DevOps specialist",
-      "Missing skills and tools (list)": "None",
-      "Members": "20, 6, 4, 17, 11"
+      "Avg fit": 0.5002,
+      "Coverage (skills and tools) %": 60.0,
+      "Avg internal sim": 0.8457,
+      "Avg internal dissim": 0.1543,
+      "Missing roles (list)": "Developer, front-end, Developer, back-end, Data scientist or machine learning specialist",
+      "Missing skills and tools (list)": "figma, machine learning",
+      "Members": "2, 3, 1"
     }
   ]
 }

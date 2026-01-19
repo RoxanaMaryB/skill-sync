@@ -1,365 +1,63 @@
 {
-  "n_teams": 4,
-  "required_items_count": 3,
+  "n_teams": 1,
+  "required_items_count": 5,
   "required_roles_count": 3,
-  "required_team_hours_per_week": 0.0,
+  "required_team_hours_per_week": 5.0,
   "teams": [
     {
       "team_number": 1,
-      "size": 5,
-      "coverage_percent": 100.0,
+      "size": 2,
+      "coverage_percent": 60.0,
       "covered_items": [
-        "amazon web services (aws)",
-        "docker",
-        "postgresql"
+        "python",
+        "react",
+        "sql"
       ],
-      "missing_items": [],
+      "missing_items": [
+        "figma",
+        "machine learning"
+      ],
       "missing_roles": [
-        "Cloud infrastructure engineer",
-        "DevOps specialist"
+        "Data scientist or machine learning specialist",
+        "Developer, back-end",
+        "Developer, front-end"
       ],
-      "avg_internal_similarity": 0.8075,
-      "max_contribution_%": 100.0,
+      "avg_internal_similarity": 0.9089,
+      "max_contribution_%": 60.0,
       "hours": {
-        "total_team_min_hours": 120.0,
+        "total_team_min_hours": 20.0,
         "hours_by_member": [
-          {
-            "candidate_id": "12",
-            "min_hours_per_week": 40.0
-          },
           {
             "candidate_id": "2",
             "min_hours_per_week": 10.0
           },
           {
-            "candidate_id": "14",
-            "min_hours_per_week": 10.0
-          },
-          {
-            "candidate_id": "9",
-            "min_hours_per_week": 40.0
-          },
-          {
-            "candidate_id": "16",
-            "min_hours_per_week": 20.0
-          }
-        ],
-        "hero_share_%": 33.3
-      },
-      "feasible_by_hours": true,
-      "member_distribution": [
-        {
-          "candidate_id": "12",
-          "n_contributed": 3,
-          "contribution_%": 100.0,
-          "contributed_items": [
-            "amazon web services (aws)",
-            "docker",
-            "postgresql"
-          ]
-        },
-        {
-          "candidate_id": "2",
-          "n_contributed": 2,
-          "contribution_%": 66.7,
-          "contributed_items": [
-            "amazon web services (aws)",
-            "postgresql"
-          ]
-        },
-        {
-          "candidate_id": "14",
-          "n_contributed": 3,
-          "contribution_%": 100.0,
-          "contributed_items": [
-            "amazon web services (aws)",
-            "docker",
-            "postgresql"
-          ]
-        },
-        {
-          "candidate_id": "9",
-          "n_contributed": 1,
-          "contribution_%": 33.3,
-          "contributed_items": [
-            "docker"
-          ]
-        },
-        {
-          "candidate_id": "16",
-          "n_contributed": 1,
-          "contribution_%": 33.3,
-          "contributed_items": [
-            "docker"
-          ]
-        }
-      ]
-    },
-    {
-      "team_number": 2,
-      "size": 5,
-      "coverage_percent": 100.0,
-      "covered_items": [
-        "amazon web services (aws)",
-        "docker",
-        "postgresql"
-      ],
-      "missing_items": [],
-      "missing_roles": [
-        "Cloud infrastructure engineer",
-        "DevOps specialist"
-      ],
-      "avg_internal_similarity": 0.8049,
-      "max_contribution_%": 100.0,
-      "hours": {
-        "total_team_min_hours": 50.0,
-        "hours_by_member": [
-          {
-            "candidate_id": "5",
-            "min_hours_per_week": 10.0
-          },
-          {
-            "candidate_id": "13",
-            "min_hours_per_week": 5.0
-          },
-          {
-            "candidate_id": "10",
-            "min_hours_per_week": 5.0
-          },
-          {
-            "candidate_id": "8",
-            "min_hours_per_week": 10.0
-          },
-          {
-            "candidate_id": "7",
-            "min_hours_per_week": 20.0
-          }
-        ],
-        "hero_share_%": 40.0
-      },
-      "feasible_by_hours": true,
-      "member_distribution": [
-        {
-          "candidate_id": "5",
-          "n_contributed": 3,
-          "contribution_%": 100.0,
-          "contributed_items": [
-            "amazon web services (aws)",
-            "docker",
-            "postgresql"
-          ]
-        },
-        {
-          "candidate_id": "13",
-          "n_contributed": 2,
-          "contribution_%": 66.7,
-          "contributed_items": [
-            "amazon web services (aws)",
-            "docker"
-          ]
-        },
-        {
-          "candidate_id": "10",
-          "n_contributed": 3,
-          "contribution_%": 100.0,
-          "contributed_items": [
-            "amazon web services (aws)",
-            "docker",
-            "postgresql"
-          ]
-        },
-        {
-          "candidate_id": "8",
-          "n_contributed": 1,
-          "contribution_%": 33.3,
-          "contributed_items": [
-            "docker"
-          ]
-        },
-        {
-          "candidate_id": "7",
-          "n_contributed": 0,
-          "contribution_%": 0.0,
-          "contributed_items": []
-        }
-      ]
-    },
-    {
-      "team_number": 3,
-      "size": 5,
-      "coverage_percent": 100.0,
-      "covered_items": [
-        "amazon web services (aws)",
-        "docker",
-        "postgresql"
-      ],
-      "missing_items": [],
-      "missing_roles": [
-        "Cloud infrastructure engineer",
-        "DevOps specialist"
-      ],
-      "avg_internal_similarity": 0.8027,
-      "max_contribution_%": 100.0,
-      "hours": {
-        "total_team_min_hours": 75.0,
-        "hours_by_member": [
-          {
             "candidate_id": "1",
             "min_hours_per_week": 10.0
-          },
-          {
-            "candidate_id": "18",
-            "min_hours_per_week": 5.0
-          },
-          {
-            "candidate_id": "15",
-            "min_hours_per_week": 10.0
-          },
-          {
-            "candidate_id": "19",
-            "min_hours_per_week": 40.0
-          },
-          {
-            "candidate_id": "3",
-            "min_hours_per_week": 10.0
           }
         ],
-        "hero_share_%": 53.3
+        "hero_share_%": 50.0
       },
       "feasible_by_hours": true,
       "member_distribution": [
+        {
+          "candidate_id": "2",
+          "n_contributed": 3,
+          "contribution_%": 60.0,
+          "contributed_items": [
+            "python",
+            "react",
+            "sql"
+          ]
+        },
         {
           "candidate_id": "1",
-          "n_contributed": 3,
-          "contribution_%": 100.0,
-          "contributed_items": [
-            "amazon web services (aws)",
-            "docker",
-            "postgresql"
-          ]
-        },
-        {
-          "candidate_id": "18",
           "n_contributed": 2,
-          "contribution_%": 66.7,
+          "contribution_%": 40.0,
           "contributed_items": [
-            "amazon web services (aws)",
-            "docker"
+            "python",
+            "react"
           ]
-        },
-        {
-          "candidate_id": "15",
-          "n_contributed": 3,
-          "contribution_%": 100.0,
-          "contributed_items": [
-            "amazon web services (aws)",
-            "docker",
-            "postgresql"
-          ]
-        },
-        {
-          "candidate_id": "19",
-          "n_contributed": 3,
-          "contribution_%": 100.0,
-          "contributed_items": [
-            "amazon web services (aws)",
-            "docker",
-            "postgresql"
-          ]
-        },
-        {
-          "candidate_id": "3",
-          "n_contributed": 0,
-          "contribution_%": 0.0,
-          "contributed_items": []
-        }
-      ]
-    },
-    {
-      "team_number": 4,
-      "size": 5,
-      "coverage_percent": 100.0,
-      "covered_items": [
-        "amazon web services (aws)",
-        "docker",
-        "postgresql"
-      ],
-      "missing_items": [],
-      "missing_roles": [
-        "Cloud infrastructure engineer",
-        "DevOps specialist",
-        "Developer, back-end"
-      ],
-      "avg_internal_similarity": 0.8072,
-      "max_contribution_%": 100.0,
-      "hours": {
-        "total_team_min_hours": 65.0,
-        "hours_by_member": [
-          {
-            "candidate_id": "20",
-            "min_hours_per_week": 20.0
-          },
-          {
-            "candidate_id": "6",
-            "min_hours_per_week": 20.0
-          },
-          {
-            "candidate_id": "4",
-            "min_hours_per_week": 10.0
-          },
-          {
-            "candidate_id": "17",
-            "min_hours_per_week": 5.0
-          },
-          {
-            "candidate_id": "11",
-            "min_hours_per_week": 10.0
-          }
-        ],
-        "hero_share_%": 30.8
-      },
-      "feasible_by_hours": true,
-      "member_distribution": [
-        {
-          "candidate_id": "20",
-          "n_contributed": 3,
-          "contribution_%": 100.0,
-          "contributed_items": [
-            "amazon web services (aws)",
-            "docker",
-            "postgresql"
-          ]
-        },
-        {
-          "candidate_id": "6",
-          "n_contributed": 1,
-          "contribution_%": 33.3,
-          "contributed_items": [
-            "amazon web services (aws)"
-          ]
-        },
-        {
-          "candidate_id": "4",
-          "n_contributed": 2,
-          "contribution_%": 66.7,
-          "contributed_items": [
-            "docker",
-            "postgresql"
-          ]
-        },
-        {
-          "candidate_id": "17",
-          "n_contributed": 1,
-          "contribution_%": 33.3,
-          "contributed_items": [
-            "docker"
-          ]
-        },
-        {
-          "candidate_id": "11",
-          "n_contributed": 0,
-          "contribution_%": 0.0,
-          "contributed_items": []
         }
       ]
     }

@@ -1,6 +1,4 @@
 
-
-# src/modules/RAG/rag_paths.py
 from __future__ import annotations
 
 import os

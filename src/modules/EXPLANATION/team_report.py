@@ -1,7 +1,4 @@
 
-
-
-# src/modules/RAG/rag_explain.py
 from __future__ import annotations
 
 import json
@@ -55,27 +52,20 @@ Output JSON schema (exact keys):
   "recommended_team_number": 0
 }
 
-REPORT STYLE:
-- Keep it friendly and readable.
-- Do not remove existing content style (strengths, risks, etc.) — just reorder and add.
-- Do NOT claim missing requirements unless that category was provided by project requirements.
-- When requirements exist, show the *actual matched items* (not just "provided").
 
 REPORT FORMAT (report_markdown):
 
 Start with:
-# Team Report
 
-## Project requirements (technical)
+
+# Project requirements (technical)
 Show:
 - Required roles (if provided and non-empty; else say Not specified)
 - Required skills (if provided and non-empty; else say Not specified)
 - Required tools (if provided and non-empty; else say Not specified)
 
-Then include:
-## Belbin Roles Glossary
-Use CONTEXT.belbin_glossary. After the glossary, add a clear note line:
-"Note: Belbin roles describe teamwork style — they are not job titles / technical project roles."
+then write 
+# Team Analaysis
 
 Then for EACH team (must include all teams):
 
@@ -90,7 +80,7 @@ Then for EACH team (must include all teams):
      "Not specified (not provided by the project description)" and do NOT claim gaps.
    - If categories are present but team data is insufficient to verify, write "Not specified".
    - Refer ONLY to technical roles from project requirements and metadata.dev_type (never Belbin).
-   - For skills/tools coverage: if present, explicitly list which required skills/tools are matched and which are missing (short lists).
+   - For skills/tools coverage: if present, explicitly list which required skills/tools are matched and which are missing (short lists). put the matched and missing in this form (matched -> etc) (missing-> etc)
 2) Team technical footprint (free text):
    - Mention top skills and top tools (short).
    - Mention dev-type spread (from metadata.dev_type counts).
@@ -101,12 +91,20 @@ Then for EACH team (must include all teams):
 Keep your existing structure:
 1) What this team is like (2–4 sentences)
 2) Dynamics snapshot (one line of counts; concise)
+then write 
 3) Strengths (3–5 bullets)
 4) Risks / watch-outs (3–5 bullets)
 
 
+Then include:
+#### Belbin Roles Glossary
+Use CONTEXT.belbin_glossary. After the glossary, add a clear note line:
+"Note: Belbin roles describe teamwork style — they are not job titles / technical project roles."
+
+
+
 End with:
-# Recommended Team: #X
+## Recommended Team: #X
 with 4–7 bullet reasons (mostly dynamics-driven, with light technical mention allowed).
 
 Now return JSON only.
@@ -137,7 +135,7 @@ def run_team_report(
     teams_ui_path: Path,
     candidate_inputs_path: Path,
     project_req_path: Optional[Path] = None,
-    teams_summary_path: Optional[Path] = None,  # ✅ NEW (optional)
+    teams_summary_path: Optional[Path] = None,  
 ) -> Dict[str, Any]:
     """
     UI calls THIS.
@@ -158,10 +156,10 @@ def run_team_report(
 
     candidate_profiles_path = paths.candidate_profiles if paths.candidate_profiles.exists() else None
 
-    # prefer UI-provided project requirements if passed, else RagPaths
+   
     pr_path = project_req_path if project_req_path and project_req_path.exists() else paths.project_requirements
 
-    # NEW: teams summary path (optional)
+    
     ts_path = teams_summary_path if teams_summary_path and teams_summary_path.exists() else paths.teams_summary
 
     context = build_context_all_teams(
@@ -188,7 +186,7 @@ def run_team_report(
     raw = (resp.choices[0].message.content or "").strip()
     result = _safe_json_loads(raw)
 
-    # UI safety
+   
     if "report_markdown" not in result:
         result["report_markdown"] = "Not specified"
     if "recommended_team_number" not in result:

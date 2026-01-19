@@ -29,11 +29,10 @@ def _parse_availability_min(avail_raw: Any) -> float:
         return 0.0
     s = s.replace("–", "-")
 
-    # keep digits and separators
     nums = re.findall(r"\d+\.?\d*", s)
     if not nums:
         return 0.0
-    # if range, take first as min
+   
     try:
         return float(nums[0])
     except Exception:
@@ -152,7 +151,7 @@ class TeamEvaluator:
         required_items = list(tr.get("skills", []) or []) + list(tr.get("tools", []) or [])
         required_roles = set(str(x) for x in (tr.get("roles", []) or []) if x)
 
-        # load similarity (optional)
+       
         sim_matrix = None
         cand_order: List[str] = []
         if candidate_ids_path and candidate_dissim_path and candidate_ids_path.exists() and candidate_dissim_path.exists():
@@ -161,12 +160,11 @@ class TeamEvaluator:
             sim_matrix = 1.0 - dissim
             sim_matrix[sim_matrix < 0.0] = 0.0
 
-        # teams format: could be list-of-teams (your UI "teams_ui.json"),
-        # or summary dict with "teams" array (if you saved summaries).
+
         team_member_lists: List[List[str]] = []
 
         if isinstance(teams_obj, list):
-            # teams_ui.json: list of teams, each team is list of row dicts
+           
             for team_rows in teams_obj:
                 member_ids = [str(r.get("Candidate ID") or r.get("candidate_id") or r.get("id")) for r in team_rows]
                 member_ids = [x for x in member_ids if x and x != "None"]

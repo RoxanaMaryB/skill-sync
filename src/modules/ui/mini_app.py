@@ -4,6 +4,7 @@ from __future__ import annotations
 import os
 import sys
 import json
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -11,21 +12,16 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
+
 ROOT = Path(__file__).resolve().parents[3]  # cv-sage/
 SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
+
 # EXTRACTORS
-from modules.json_extraction.proj_extractor import (
-    ProjectSchemaExtractor,
-    ProjectExtractorConfig,
-)
-from modules.json_extraction.extractor import (
-    CandidateProfileExtractor,
-    ExtractorConfig,
-    OPENROUTER_BASE_URL,
-)
+from modules.json_extraction.proj_extractor import ProjectSchemaExtractor, ProjectExtractorConfig
+from modules.json_extraction.extractor import CandidateProfileExtractor, ExtractorConfig, OPENROUTER_BASE_URL
 
 # EMBEDDINGS
 from modules.candidate_embeddings.embedding_service import gen_cand_emb_dissim
@@ -39,11 +35,13 @@ from shared.interfaces import CandidateProfile, ProjectDescription
 from modules.evaluators.profile_ex_eval import CandidateProfileEvaluator
 from modules.evaluators.project_ex_eval import ProjectRequirementsEvaluator
 from modules.evaluators.team_eval import TeamEvaluator
+from modules.evaluators.latency_logger import log_latency  # JSONL logger
 
 # EXPLANATION
 import modules.EXPLANATION.team_report as explain_report
 
-# Page config
+
+# APP config
 
 st.set_page_config(page_title="SkillSync - Team Formation", layout="wide")
 st.title("SkillSync - Team Formation")
@@ -55,28 +53,16 @@ st.caption(
 with st.sidebar:
     st.header("Model / API Settings (OpenRouter)")
 
-    api_key = st.text_input(
-        "API Key",
-        value=os.getenv("OPENROUTER_API_KEY", ""),
-        type="password",
-    )
-
-    base_url = st.text_input(
-        "Base URL",
-        value=os.getenv("OPENAI_BASE_URL", OPENROUTER_BASE_URL),
-    )
-
-    model = st.text_input(
-        "Model",
-        value=os.getenv("OPENAI_MODEL", "openai/gpt-4o-mini"),
-    )
-
+    api_key = st.text_input("API Key", value=os.getenv("OPENROUTER_API_KEY", ""), type="password")
+    base_url = st.text_input("Base URL", value=os.getenv("OPENAI_BASE_URL", OPENROUTER_BASE_URL))
+    model = st.text_input("Model", value=os.getenv("OPENAI_MODEL", "openai/gpt-4o-mini"))
 
 tab_run, tab_explain, tab_eval, tab_raw = st.tabs(
     ["Run Pipeline", "Explanation Report", "Evaluation", "Raw JSON"]
 )
 
-# Paths / artifacts
+
+# Artifacts AND PATHS 
 
 artifacts_root = ROOT / "data" / "artifacts"
 
@@ -100,10 +86,13 @@ cand_eval_path = eval_dir / "candidate_extraction_eval.json"
 proj_eval_path = eval_dir / "project_extraction_eval.json"
 teams_eval_path = eval_dir / "teams_evaluation_summary.json"
 
+# Latency log file JSONL
+latency_log_path = eval_dir / "latency_log.jsonl"
+
+# Embedding / similarity artifacts
 cand_emb_path = artifacts_root / "candidate_embeddings.npy"
 cand_ids_path = artifacts_root / "candidate_ids.json"
 cand_dissim_path = artifacts_root / "candidate_dissimilarity.npy"
-
 sim_json_path = artifacts_root / "candidate_project_similarity.json"
 
 teams_out_path_default = artifacts_root / "teams_ui.json"
@@ -113,7 +102,8 @@ explain_dir = artifacts_root / "explanation"
 explain_dir.mkdir(parents=True, exist_ok=True)
 explain_out_path = explain_dir / "team_report.json"
 
-# Small helpers (reduce duplication)
+
+# Helper FUNCTIONS
 
 def _file_ok(p: Path) -> bool:
     return p.exists() and p.stat().st_size > 0
@@ -134,6 +124,7 @@ def read_json_if_ok(p: Path) -> Optional[dict]:
 
 
 def save_json(p: Path, obj: Any) -> None:
+    p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(json.dumps(obj, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
@@ -191,9 +182,7 @@ def load_profiles_as_objects(profiles_path: Path) -> List[CandidateProfile]:
         skills = technical.get("skills", []) or []
         tools = technical.get("tools", []) or []
 
-        availability_hours = _parse_availability_to_int(
-            constraints.get("weekly_availability_hours", "Unknown")
-        )
+        availability_hours = _parse_availability_to_int(constraints.get("weekly_availability_hours", "Unknown"))
 
         exp_raw = metadata.get("work_experience_years", 0)
         try:
@@ -294,7 +283,9 @@ def avg_team_dissimilarity(team_ids: List[str], dissim: np.ndarray, id2idx: Dict
             vals.append(float(dissim[idxs[i], idxs[j]]))
     return float(sum(vals) / len(vals)) if vals else 0.0
 
-# TAB: Run Pipeline
+
+
+#FIRST TAB Run Pipeline
 
 with tab_run:
     st.subheader("Upload candidate CSV")
@@ -312,7 +303,7 @@ with tab_run:
 
     st.divider()
 
-    st.subheader("Extract candidate profiles")
+    st.subheader("Extract candidate profiles (LLM)")
     if df_candidates is None:
         st.info("Upload a CSV to enable candidate extraction.")
     else:
@@ -356,6 +347,7 @@ with tab_run:
             profiles: list[dict] = []
             inputs: dict[str, str] = {}
 
+            t0 = time.perf_counter()
             for i in range(limit):
                 row = df_candidates.iloc[i].to_dict()
                 cid = extractor.as_str(row.get("Candidate ID"))
@@ -371,12 +363,23 @@ with tab_run:
 
                 progress.progress((i + 1) / limit)
 
+            # Save extraction outputs
             CandidateProfileExtractor.save_json(profiles, str(cand_profiles_evid_path))
             CandidateProfileExtractor.save_json(
                 [CandidateProfileExtractor.strip_evidence(p) for p in profiles],
                 str(cand_profiles_clean_path),
             )
             CandidateProfileExtractor.save_json(inputs, str(cand_inputs_path_default))
+
+            # Latency log (candidate extraction) — LLM stage only
+            log_latency(
+                log_path=latency_log_path,
+                stage="candidate_extraction",
+                total_s=time.perf_counter() - t0,
+                model=model,
+                base_url=base_url,
+                n_candidates=int(limit),
+            )
 
             st.success("Candidate extraction finished.")
             st.code(str(cand_profiles_clean_path))
@@ -387,29 +390,19 @@ with tab_run:
                 st.subheader("Example: first extracted profile")
                 st.json(profiles[0])
 
-    st.divider()
-
-    st.subheader("Generate Candidate Embeddings")
-    cand_embed_btn = st.button(
-        "Generate Candidate Embeddings",
-        type="secondary",
-        disabled=not cand_profiles_clean_path.exists(),
-    )
-
-    if cand_embed_btn:
-        with st.spinner("Generating candidate embeddings..."):
-            try:
-                gen_cand_emb_dissim(cand_profiles_clean_path)
-                st.success("Candidate embeddings generated.")
-                st.code(str(cand_emb_path))
-                st.code(str(cand_ids_path))
-                st.code(str(cand_dissim_path))
-            except Exception as e:
-                st.error(f"Candidate embedding step failed: {e}")
+            with st.spinner("Auto-generating candidate embeddings..."):
+                try:
+                    gen_cand_emb_dissim(cand_profiles_clean_path)
+                    st.success("Candidate embeddings generated automatically.")
+                    st.code(str(cand_emb_path))
+                    st.code(str(cand_ids_path))
+                    st.code(str(cand_dissim_path))
+                except Exception as e:
+                    st.error(f"Auto candidate embeddings failed: {e}")
 
     st.divider()
 
-    st.subheader("Project description")
+    st.subheader("Project description  ")
     description = st.text_area(
         "Paste your project description or stack needed here",
         height=180,
@@ -428,7 +421,7 @@ with tab_run:
 
     st.divider()
 
-    st.subheader("Extract and save Project Requirements")
+    st.subheader("Extract and save Project Requirements (LLM) ")
     extract_project_btn = st.button(
         "Extract and save Project Requirements JSON",
         type="primary",
@@ -440,6 +433,7 @@ with tab_run:
             st.error("Missing API key.")
         else:
             with st.spinner("Extracting project requirements..."):
+                t0 = time.perf_counter()
                 extracted = cached_extract_project(api_key, base_url, model, description)
 
                 project_requirements = {
@@ -455,32 +449,41 @@ with tab_run:
                     json.dumps(project_requirements, indent=2, ensure_ascii=False),
                     encoding="utf-8",
                 )
+
+                # Latency log (project extraction) — LLM stage only
+                log_latency(
+                    log_path=latency_log_path,
+                    stage="project_extraction",
+                    total_s=time.perf_counter() - t0,
+                    model=model,
+                    base_url=base_url,
+                    description_chars=len(description),
+                )
+
                 st.success("Project requirements saved.")
                 st.code(str(proj_req_path))
                 st.json(project_requirements)
                 st.info(
-                "Note: Project roles are restricted to the Stack Overflow 2024 "
-                "Developer Type schema. If the description does not clearly match "
-                "a survey role, the roles list may be empty."
+                    "Note: Project roles are restricted to the Stack Overflow 2024 "
+                    "Developer Type schema. If the description does not clearly match "
+                    "a survey role, the roles list may be empty."
                 )
 
-    st.divider()
-
-    st.subheader("Generate Project Embedding and Similarity")
-    proj_embed_btn = st.button(
-        "Generate Project Embedding and Similarity",
-        type="secondary",
-        disabled=not proj_req_path.exists(),
-    )
-
-    if proj_embed_btn:
-        with st.spinner("Embedding project and computing similarity..."):
-            try:
-                gen_proj_emb_sim(proj_req_path)
-                st.success("Project embedding and similarity generated.")
-                st.code(str(sim_json_path))
-            except Exception as e:
-                st.error(f"Project embedding/similarity failed: {e}")
+          
+            if not _file_ok(cand_emb_path) or not _file_ok(cand_ids_path):
+                st.warning(
+                    "Candidate embeddings not found yet. "
+                    "Please extract candidates first (it will auto-generate embeddings), "
+                    "then extract the project again to compute similarity."
+                )
+            else:
+                with st.spinner("Auto-embedding project and computing similarity..."):
+                    try:
+                        gen_proj_emb_sim(proj_req_path)
+                        st.success("Project embeddings + candidate-project similarity generated automatically.")
+                        st.code(str(sim_json_path))
+                    except Exception as e:
+                        st.error(f"Auto project embedding/similarity failed: {e}")
 
     st.divider()
 
@@ -599,6 +602,7 @@ with tab_run:
 
                         overview_df = pd.DataFrame(overview_rows)
                         if not overview_df.empty:
+
                             def _count_list_str(s: str) -> int:
                                 return 0 if s == "None" else len([x for x in s.split(",") if x.strip()])
 
@@ -689,13 +693,18 @@ with tab_run:
             except Exception as e:
                 st.error(f"Team building failed: {e}")
 
-# TAB: Explanation Report
+
+
+# 2ND TAB Explanation Report (LLM)
+
 with tab_explain:
     st.subheader("Team Report (LLM Explanation)")
     st.caption("Button enables only when files and API key exist.")
 
     status_line("Teams file", teams_out_path_default)
     status_line("Candidate inputs", cand_inputs_path_default)
+    status_line("Latency log", latency_log_path)
+
     if proj_req_path.exists():
         status_line("Project requirements (optional)", proj_req_path)
     else:
@@ -709,6 +718,8 @@ with tab_explain:
 
     if explain_btn:
         try:
+            t0 = time.perf_counter()
+
             payload = explain_report.run_team_report(
                 api_key=api_key,
                 base_url=base_url,
@@ -719,13 +730,21 @@ with tab_explain:
                 project_req_path=proj_req_path if proj_req_path.exists() else None,
                 teams_summary_path=teams_summary_path if teams_summary_path.exists() else None,
             )
+
+            # Latency log (explanation report) — LLM stage only
+            log_latency(
+                log_path=latency_log_path,
+                stage="explanation_report",
+                total_s=time.perf_counter() - t0,
+                model=model,
+                base_url=base_url,
+            )
+
             save_json(explain_out_path, payload)
             st.success(f"Saved: {explain_out_path}")
 
-            st.subheader("Recommended team")
-            st.write(f"Team #{payload.get('result', {}).get('recommended_team_number', 'Not specified')}")
-
-            st.subheader("Report")
+          
+            
             st.markdown(payload.get("result", {}).get("report_markdown", "Not specified"))
 
             with st.expander("Raw JSON result"):
@@ -734,7 +753,10 @@ with tab_explain:
         except Exception as e:
             st.error(f"Explanation report failed: {e}")
 
-# TAB: Evaluation
+
+
+# THIRD TAB EVALUATION
+
 with tab_eval:
     st.subheader("Evaluation")
     st.markdown("### Quality Dashboard")
@@ -799,6 +821,34 @@ with tab_eval:
                 st.caption("Avg internal diversity: Not specified (check TeamEvaluator output keys)")
         else:
             st.info("Run Team Evaluation to populate metrics.")
+
+    st.divider()
+
+    
+    #  LATENCY RABLE FOR  THE 3 LLM stages 
+    st.markdown("### Latency log (LLM stages)")
+    if latency_log_path.exists() and latency_log_path.stat().st_size > 0:
+        lines = latency_log_path.read_text(encoding="utf-8").strip().splitlines()
+        rows = []
+        for ln in lines:
+            try:
+                rows.append(json.loads(ln))
+            except Exception:
+                pass
+
+        if rows:
+            df_lat = pd.DataFrame(rows)
+            df_lat = df_lat[df_lat["stage"].isin(["candidate_extraction", "project_extraction", "explanation_report"])]
+
+            if "ts_utc" in df_lat.columns:
+                df_lat = df_lat.sort_values("ts_utc", ascending=False)
+
+            st.dataframe(df_lat, use_container_width=True)
+            st.caption(f"Logfile: {latency_log_path}")
+        else:
+            st.info("Latency log exists but no valid entries found.")
+    else:
+        st.info("No latency log yet. Run the LLM stages once.")
 
     st.divider()
 
@@ -871,6 +921,8 @@ with tab_eval:
             st.json(summary)
 
 
+
+# LAST TAB
 with tab_raw:
     st.subheader("Raw JSON Outputs")
 
@@ -888,6 +940,7 @@ with tab_raw:
         sim_json_path,
         explain_out_path,
         artifacts_root / "teams_overview.json",
+        latency_log_path,
     ]
 
     for p in show_files:
@@ -897,8 +950,18 @@ with tab_raw:
         try:
             if p.suffix.lower() == ".txt":
                 st.code(p.read_text(encoding="utf-8"))
-            elif p.suffix.lower() == ".json":
-                st.json(json.loads(p.read_text(encoding="utf-8")))
+            elif p.suffix.lower() in [".json", ".jsonl"]:
+                if p.suffix.lower() == ".jsonl":
+                    lines = p.read_text(encoding="utf-8").strip().splitlines()[-50:]
+                    rows = []
+                    for ln in lines:
+                        try:
+                            rows.append(json.loads(ln))
+                        except Exception:
+                            pass
+                    st.json(rows)
+                else:
+                    st.json(json.loads(p.read_text(encoding="utf-8")))
             else:
                 st.caption(f"(Binary file) {p}")
         except Exception as e:

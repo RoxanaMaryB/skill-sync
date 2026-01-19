@@ -157,7 +157,7 @@ class CandidateProfileEvaluator:
         if ks not in ALLOWED["knowledge_sharing"]:
             out["label_errors"].append(f"Invalid knowledge_sharing: {ks}")
 
-        # parse sources from input_text ("Key: Value" lines)
+        
         sources: Dict[str, str] = {}
         for line in (input_text or "").splitlines():
             if ":" in line:
