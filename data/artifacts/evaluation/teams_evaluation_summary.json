@@ -1,62 +1,139 @@
 {
-  "n_teams": 1,
-  "required_items_count": 5,
-  "required_roles_count": 3,
-  "required_team_hours_per_week": 5.0,
+  "n_teams": 2,
+  "required_items_count": 4,
+  "required_roles_count": 2,
+  "required_team_hours_per_week": 0.0,
   "teams": [
     {
       "team_number": 1,
-      "size": 2,
-      "coverage_percent": 60.0,
+      "size": 3,
+      "coverage_percent": 75.0,
       "covered_items": [
-        "python",
-        "react",
-        "sql"
+        "amazon web services (aws)",
+        "docker",
+        "kubernetes"
       ],
       "missing_items": [
-        "figma",
-        "machine learning"
+        "linux"
       ],
       "missing_roles": [
-        "Data scientist or machine learning specialist",
-        "Developer, back-end",
-        "Developer, front-end"
+        "Cloud infrastructure engineer",
+        "DevOps specialist"
       ],
-      "avg_internal_similarity": 0.9089,
-      "max_contribution_%": 60.0,
+      "avg_internal_similarity": 0.83,
+      "max_contribution_%": 75.0,
       "hours": {
-        "total_team_min_hours": 20.0,
+        "total_team_min_hours": 30.0,
         "hours_by_member": [
-          {
-            "candidate_id": "2",
-            "min_hours_per_week": 10.0
-          },
           {
             "candidate_id": "1",
             "min_hours_per_week": 10.0
+          },
+          {
+            "candidate_id": "5",
+            "min_hours_per_week": 10.0
+          },
+          {
+            "candidate_id": "4",
+            "min_hours_per_week": 10.0
           }
         ],
-        "hero_share_%": 50.0
+        "hero_share_%": 33.3
       },
       "feasible_by_hours": true,
       "member_distribution": [
         {
-          "candidate_id": "2",
+          "candidate_id": "1",
           "n_contributed": 3,
-          "contribution_%": 60.0,
+          "contribution_%": 75.0,
           "contributed_items": [
-            "python",
-            "react",
-            "sql"
+            "amazon web services (aws)",
+            "docker",
+            "kubernetes"
           ]
         },
         {
-          "candidate_id": "1",
+          "candidate_id": "5",
           "n_contributed": 2,
-          "contribution_%": 40.0,
+          "contribution_%": 50.0,
           "contributed_items": [
-            "python",
-            "react"
+            "amazon web services (aws)",
+            "docker"
+          ]
+        },
+        {
+          "candidate_id": "4",
+          "n_contributed": 1,
+          "contribution_%": 25.0,
+          "contributed_items": [
+            "docker"
+          ]
+        }
+      ]
+    },
+    {
+      "team_number": 2,
+      "size": 3,
+      "coverage_percent": 75.0,
+      "covered_items": [
+        "amazon web services (aws)",
+        "docker",
+        "kubernetes"
+      ],
+      "missing_items": [
+        "linux"
+      ],
+      "missing_roles": [
+        "Cloud infrastructure engineer",
+        "DevOps specialist"
+      ],
+      "avg_internal_similarity": 0.8478,
+      "max_contribution_%": 75.0,
+      "hours": {
+        "total_team_min_hours": 35.0,
+        "hours_by_member": [
+          {
+            "candidate_id": "10",
+            "min_hours_per_week": 5.0
+          },
+          {
+            "candidate_id": "6",
+            "min_hours_per_week": 20.0
+          },
+          {
+            "candidate_id": "2",
+            "min_hours_per_week": 10.0
+          }
+        ],
+        "hero_share_%": 57.1
+      },
+      "feasible_by_hours": true,
+      "member_distribution": [
+        {
+          "candidate_id": "10",
+          "n_contributed": 3,
+          "contribution_%": 75.0,
+          "contributed_items": [
+            "amazon web services (aws)",
+            "docker",
+            "kubernetes"
+          ]
+        },
+        {
+          "candidate_id": "6",
+          "n_contributed": 1,
+          "contribution_%": 25.0,
+          "contributed_items": [
+            "amazon web services (aws)"
+          ]
+        },
+        {
+          "candidate_id": "2",
+          "n_contributed": 2,
+          "contribution_%": 50.0,
+          "contributed_items": [
+            "amazon web services (aws)",
+            "kubernetes"
           ]
         }
       ]

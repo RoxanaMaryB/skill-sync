@@ -1,53 +1,92 @@
 {
-  "n_teams": 1,
+  "n_teams": 2,
   "team_size": 3,
-  "required_items_count": 5,
-  "required_roles_count": 3,
+  "required_items_count": 4,
+  "required_roles_count": 2,
   "teams": [
     {
       "team_number": 1,
       "size": 3,
-      "coverage_percent": 60.0,
+      "coverage_percent": 75.0,
       "covered_items": [
-        "python",
-        "react",
-        "sql"
+        "amazon web services (aws)",
+        "docker",
+        "kubernetes"
       ],
       "missing_items": [
-        "figma",
-        "machine learning"
+        "linux"
       ],
       "missing_roles": [
-        "Developer, front-end",
-        "Developer, back-end",
-        "Data scientist or machine learning specialist"
+        "Cloud infrastructure engineer",
+        "DevOps specialist"
       ],
-      "avg_fit": 0.5002,
-      "avg_internal_similarity": 0.8457,
+      "avg_fit": 0.5273,
+      "avg_internal_similarity": 0.83,
       "member_ids": [
-        "2",
-        "3",
-        "1"
+        "1",
+        "5",
+        "4"
       ],
       "technical_coverage_summary": {
         "required_items_specified": true,
         "required_roles_specified": true,
         "items_covered": false,
         "roles_covered": false,
-        "coverage_percent": 60.0,
+        "coverage_percent": 75.0,
         "covered_items": [
-          "python",
-          "react",
-          "sql"
+          "amazon web services (aws)",
+          "docker",
+          "kubernetes"
         ],
         "missing_items": [
-          "figma",
-          "machine learning"
+          "linux"
         ],
         "missing_roles": [
-          "Developer, front-end",
-          "Developer, back-end",
-          "Data scientist or machine learning specialist"
+          "Cloud infrastructure engineer",
+          "DevOps specialist"
+        ]
+      }
+    },
+    {
+      "team_number": 2,
+      "size": 3,
+      "coverage_percent": 75.0,
+      "covered_items": [
+        "amazon web services (aws)",
+        "docker",
+        "kubernetes"
+      ],
+      "missing_items": [
+        "linux"
+      ],
+      "missing_roles": [
+        "Cloud infrastructure engineer",
+        "DevOps specialist"
+      ],
+      "avg_fit": 0.5234,
+      "avg_internal_similarity": 0.8478,
+      "member_ids": [
+        "10",
+        "6",
+        "2"
+      ],
+      "technical_coverage_summary": {
+        "required_items_specified": true,
+        "required_roles_specified": true,
+        "items_covered": false,
+        "roles_covered": false,
+        "coverage_percent": 75.0,
+        "covered_items": [
+          "amazon web services (aws)",
+          "docker",
+          "kubernetes"
+        ],
+        "missing_items": [
+          "linux"
+        ],
+        "missing_roles": [
+          "Cloud infrastructure engineer",
+          "DevOps specialist"
         ]
       }
     }

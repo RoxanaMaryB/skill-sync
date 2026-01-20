@@ -1,22 +1,20 @@
 {
   "technical_requirements": {
     "skills": [
-      "React",
-      "Python",
-      "SQL",
-      "Machine Learning"
+      "Amazon Web Services (AWS)",
+      "Docker",
+      "Kubernetes",
+      "Linux"
     ],
-    "tools": [
-      "Figma"
-    ],
+    "tools": [],
     "roles": [
-      "Developer, front-end",
-      "Developer, back-end",
-      "Data scientist or machine learning specialist"
+      "Cloud infrastructure engineer",
+      "DevOps specialist"
     ]
   },
   "constraints": {
     "team_size": 3,
-    "min_availability_hours_per_week": 10
+    "project_hours_per_week": 30.0,
+    "required_hours_per_person": 10.0
   }
 }

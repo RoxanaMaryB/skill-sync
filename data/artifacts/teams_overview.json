@@ -2,13 +2,23 @@
   "rows": [
     {
       "Team": 1,
-      "Avg fit": 0.5002,
-      "Coverage (skills and tools) %": 60.0,
-      "Avg internal sim": 0.8457,
-      "Avg internal dissim": 0.1543,
-      "Missing roles (list)": "Developer, front-end, Developer, back-end, Data scientist or machine learning specialist",
-      "Missing skills and tools (list)": "figma, machine learning",
-      "Members": "2, 3, 1"
+      "Avg fit": 0.5273,
+      "Coverage (skills and tools) %": 75.0,
+      "Avg internal sim": 0.83,
+      "Avg internal dissim": 0.17,
+      "Missing roles (list)": "Cloud infrastructure engineer, DevOps specialist",
+      "Missing skills and tools (list)": "linux",
+      "Members": "1, 5, 4"
+    },
+    {
+      "Team": 2,
+      "Avg fit": 0.5234,
+      "Coverage (skills and tools) %": 75.0,
+      "Avg internal sim": 0.8478,
+      "Avg internal dissim": 0.1522,
+      "Missing roles (list)": "Cloud infrastructure engineer, DevOps specialist",
+      "Missing skills and tools (list)": "linux",
+      "Members": "10, 6, 2"
     }
   ]
 }

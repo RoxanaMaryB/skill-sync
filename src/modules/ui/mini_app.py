@@ -1,4 +1,5 @@
 
+
 from __future__ import annotations
 
 import os
@@ -12,12 +13,10 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-
 ROOT = Path(__file__).resolve().parents[3]  # cv-sage/
 SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
-
 
 # EXTRACTORS
 from modules.json_extraction.proj_extractor import ProjectSchemaExtractor, ProjectExtractorConfig
@@ -41,18 +40,15 @@ from modules.evaluators.latency_logger import log_latency  # JSONL logger
 import modules.EXPLANATION.team_report as explain_report
 
 
-# APP config
-
 st.set_page_config(page_title="SkillSync - Team Formation", layout="wide")
 st.title("SkillSync - Team Formation")
 st.caption(
-    "Upload candidates -> extract profiles -> embeddings -> extract project requirements -> "
-    "similarity -> build teams -> evaluate -> explanation report."
+    "Project description → project constraints → extract project requirements → "
+    "upload candidates → extract profiles → embeddings → similarity → build teams → evaluate → explanation report."
 )
 
 with st.sidebar:
     st.header("Model / API Settings (OpenRouter)")
-
     api_key = st.text_input("API Key", value=os.getenv("OPENROUTER_API_KEY", ""), type="password")
     base_url = st.text_input("Base URL", value=os.getenv("OPENAI_BASE_URL", OPENROUTER_BASE_URL))
     model = st.text_input("Model", value=os.getenv("OPENAI_MODEL", "openai/gpt-4o-mini"))
@@ -61,8 +57,6 @@ tab_run, tab_explain, tab_eval, tab_raw = st.tabs(
     ["Run Pipeline", "Explanation Report", "Evaluation", "Raw JSON"]
 )
 
-
-# Artifacts AND PATHS 
 
 artifacts_root = ROOT / "data" / "artifacts"
 
@@ -86,7 +80,6 @@ cand_eval_path = eval_dir / "candidate_extraction_eval.json"
 proj_eval_path = eval_dir / "project_extraction_eval.json"
 teams_eval_path = eval_dir / "teams_evaluation_summary.json"
 
-# Latency log file JSONL
 latency_log_path = eval_dir / "latency_log.jsonl"
 
 # Embedding / similarity artifacts
@@ -103,7 +96,6 @@ explain_dir.mkdir(parents=True, exist_ok=True)
 explain_out_path = explain_dir / "team_report.json"
 
 
-# Helper FUNCTIONS
 
 def _file_ok(p: Path) -> bool:
     return p.exists() and p.stat().st_size > 0
@@ -284,10 +276,98 @@ def avg_team_dissimilarity(team_ids: List[str], dissim: np.ndarray, id2idx: Dict
     return float(sum(vals) / len(vals)) if vals else 0.0
 
 
-
-#FIRST TAB Run Pipeline
-
+# start pipeline here 
 with tab_run:
+    st.subheader("Project description")
+    description = st.text_area(
+        "Paste your project description (what you want to build)",
+        height=180,
+        placeholder="Example: Redesign an e-commerce UI, add recommendations, improve performance, etc.",
+    )
+
+    st.subheader("Project constraints")
+    c1, c2 = st.columns(2)
+
+    with c1:
+        team_size = st.number_input("How many members in the project?", min_value=2, max_value=20, value=5, step=1)
+
+    with c2:
+        project_hours_per_week = st.number_input(
+            "Project working hours per week",
+            min_value=0,
+            max_value=2000,
+            value=50,
+            step=5,
+            help="Example: total hours/week for the whole project team.",
+        )
+
+    required_hours_per_person = float(project_hours_per_week) / float(team_size) if int(team_size) > 0 else 0.0
+    st.caption(f"Auto-calculated required hours per person: **{required_hours_per_person:.1f} hrs/week**")
+
+
+    st.subheader("Extract and save project requirements (LLM)")
+    extract_project_btn = st.button(
+        "Extract and save Project Requirements JSON",
+        type="primary",
+        disabled=not description.strip(),
+    )
+
+    if extract_project_btn:
+        if not api_key.strip():
+            st.error("Missing API key.")
+        else:
+            with st.spinner("Extracting project requirements..."):
+                t0 = time.perf_counter()
+                extracted = cached_extract_project(api_key, base_url, model, description)
+
+                project_requirements = {
+                    **extracted,
+                    "constraints": {
+                        "team_size": int(team_size),
+                        "project_hours_per_week": float(project_hours_per_week),
+                        "required_hours_per_person": float(required_hours_per_person),
+                    },
+                }
+
+                proj_desc_path.write_text(description, encoding="utf-8")
+                proj_req_path.write_text(
+                    json.dumps(project_requirements, indent=2, ensure_ascii=False),
+                    encoding="utf-8",
+                )
+
+                log_latency(
+                    log_path=latency_log_path,
+                    stage="project_extraction",
+                    total_s=time.perf_counter() - t0,
+                    model=model,
+                    base_url=base_url,
+                    description_chars=len(description),
+                )
+
+                st.success("Project requirements saved.")
+                st.code(str(proj_req_path))
+                st.json(project_requirements)
+
+            # If candidate embeddings exist already, auto compute similarity too
+            if _file_ok(cand_emb_path) and _file_ok(cand_ids_path):
+                with st.spinner("Auto-embedding project and computing similarity..."):
+                    try:
+                        gen_proj_emb_sim(proj_req_path)
+                        st.success("Project embeddings + candidate-project similarity generated automatically.")
+                        st.code(str(sim_json_path))
+                    except Exception as e:
+                        st.error(f"Auto project embedding/similarity failed: {e}")
+            else:
+                st.info(
+                    "Candidate embeddings not found yet. After extracting candidates (which generates embeddings), "
+                    "click this project extraction button again to generate similarity automatically."
+                )
+
+    st.divider()
+
+  
+    # Upload CSV
+
     st.subheader("Upload candidate CSV")
     uploaded_csv = st.file_uploader("Upload CSV", type=["csv"])
 
@@ -303,21 +383,35 @@ with tab_run:
 
     st.divider()
 
+   
+    #candidate extraction
+   
     st.subheader("Extract candidate profiles (LLM)")
+
     if df_candidates is None:
         st.info("Upload a CSV to enable candidate extraction.")
     else:
-        max_n = min(500, len(df_candidates))
+        max_n = min(2000, len(df_candidates))
         n_candidates = st.number_input(
-            "How many candidates to extract (N)",
+            "How many candidates to extract?",
             min_value=1,
             max_value=max_n,
-            value=min(50, max_n),
+            value=min(200, max_n),
             step=1,
         )
 
+        pool_size_ui = st.number_input(
+            "Team builder pool size (top K candidates)",
+            min_value=10,
+            max_value=2000,
+            value=int(st.session_state.get("pool_size_ui", 200)),
+            step=10,
+            help="Team builder will consider the top K candidates by project fit.",
+        )
+        st.session_state["pool_size_ui"] = int(pool_size_ui)
+
         extract_candidates_btn = st.button(
-            "Extract N candidates",
+            "Extract candidates",
             type="primary",
             disabled=not api_key.strip(),
         )
@@ -363,7 +457,6 @@ with tab_run:
 
                 progress.progress((i + 1) / limit)
 
-            # Save extraction outputs
             CandidateProfileExtractor.save_json(profiles, str(cand_profiles_evid_path))
             CandidateProfileExtractor.save_json(
                 [CandidateProfileExtractor.strip_evidence(p) for p in profiles],
@@ -371,7 +464,6 @@ with tab_run:
             )
             CandidateProfileExtractor.save_json(inputs, str(cand_inputs_path_default))
 
-            # Latency log (candidate extraction) — LLM stage only
             log_latency(
                 log_path=latency_log_path,
                 stage="candidate_extraction",
@@ -400,105 +492,25 @@ with tab_run:
                 except Exception as e:
                     st.error(f"Auto candidate embeddings failed: {e}")
 
-    st.divider()
-
-    st.subheader("Project description  ")
-    description = st.text_area(
-        "Paste your project description or stack needed here",
-        height=180,
-        placeholder="Example: Build a web app with a Python backend, React frontend, deploy on AWS...",
-    )
-
-    st.subheader("Constraints")
-    team_size = st.number_input("Team size", min_value=2, max_value=20, value=5, step=1)
-    min_hours = st.number_input(
-        "Minimum availability (hours per week per person)",
-        min_value=0,
-        max_value=80,
-        value=10,
-        step=1,
-    )
-
-    st.divider()
-
-    st.subheader("Extract and save Project Requirements (LLM) ")
-    extract_project_btn = st.button(
-        "Extract and save Project Requirements JSON",
-        type="primary",
-        disabled=not description.strip(),
-    )
-
-    if extract_project_btn:
-        if not api_key.strip():
-            st.error("Missing API key.")
-        else:
-            with st.spinner("Extracting project requirements..."):
-                t0 = time.perf_counter()
-                extracted = cached_extract_project(api_key, base_url, model, description)
-
-                project_requirements = {
-                    **extracted,
-                    "constraints": {
-                        "team_size": int(team_size),
-                        "min_availability_hours_per_week": int(min_hours),
-                    },
-                }
-
-                proj_desc_path.write_text(description, encoding="utf-8")
-                proj_req_path.write_text(
-                    json.dumps(project_requirements, indent=2, ensure_ascii=False),
-                    encoding="utf-8",
-                )
-
-                # Latency log (project extraction) — LLM stage only
-                log_latency(
-                    log_path=latency_log_path,
-                    stage="project_extraction",
-                    total_s=time.perf_counter() - t0,
-                    model=model,
-                    base_url=base_url,
-                    description_chars=len(description),
-                )
-
-                st.success("Project requirements saved.")
-                st.code(str(proj_req_path))
-                st.json(project_requirements)
-                st.info(
-                    "Note: Project roles are restricted to the Stack Overflow 2024 "
-                    "Developer Type schema. If the description does not clearly match "
-                    "a survey role, the roles list may be empty."
-                )
-
-          
-            if not _file_ok(cand_emb_path) or not _file_ok(cand_ids_path):
-                st.warning(
-                    "Candidate embeddings not found yet. "
-                    "Please extract candidates first (it will auto-generate embeddings), "
-                    "then extract the project again to compute similarity."
-                )
-            else:
+            # If project requirements already exist, auto compute similarity now too
+            if _file_ok(proj_req_path) and _file_ok(cand_emb_path) and _file_ok(cand_ids_path):
                 with st.spinner("Auto-embedding project and computing similarity..."):
                     try:
                         gen_proj_emb_sim(proj_req_path)
-                        st.success("Project embeddings + candidate-project similarity generated automatically.")
+                        st.success("Candidate-project similarity generated automatically.")
                         st.code(str(sim_json_path))
                     except Exception as e:
-                        st.error(f"Auto project embedding/similarity failed: {e}")
+                        st.error(f"Auto similarity failed: {e}")
 
     st.divider()
 
-    st.subheader("Team Builder")
-    n_teams_ui = st.number_input("How many teams to build?", min_value=1, max_value=50, value=5, step=1)
-    pool_size_ui = st.number_input("Pool size (top K candidates)", min_value=10, max_value=2000, value=20, step=1)
+    # Team Builder
 
-    availability_mode = st.radio(
-        "Availability filter mode",
-        options=[
-            "Ignore min_hours (no availability filtering)",
-            "Enforce min_hours (filter candidates)",
-        ],
-        index=0,
-    )
+    st.subheader("Team Builder")
+
+    st.subheader("Team Builder")
+    n_teams_ui = st.number_input("How many teams to build?", min_value=1, max_value=50, value=2, step=1)
+
 
     build_team_btn = st.button(
         "Build Teams",
@@ -530,172 +542,192 @@ with tab_run:
 
                 dissim = np.load(cand_dissim_path)
                 cand_sim_matrix = dissimilarity_to_similarity(dissim)
+
                 project_similarities = load_fit_map_from_similarity_json(sim_json_path)
 
-                def passes_availability(p: CandidateProfile) -> bool:
-                    if availability_mode.startswith("Ignore"):
-                        return True
-                    return int(p.availability_hours or 0) >= int(min_hours)
+                pool_size_ui = int(st.session_state.get("pool_size_ui", 200))
 
-                eligible_profiles = [p for p in profiles if passes_availability(p)]
+                eligible_profiles = [p for p in profiles if p.id in project_similarities]
+
                 need_min = int(n_teams_ui) * int(project.team_size)
-                st.caption(f"Eligible candidates: {len(eligible_profiles)} (need at least {need_min})")
-
                 max_possible = len(eligible_profiles) // int(project.team_size)
-                n_build = min(int(n_teams_ui), max_possible)
 
-                if n_build <= 0:
-                    st.warning("No teams can be formed with current constraints.")
-                else:
-                    teams = build_teams_round_robin(
-                        profiles=eligible_profiles,
-                        project=project,
-                        candidate_sim_matrix=cand_sim_matrix,
-                        candidate_ids=candidate_ids_order,
-                        project_similarities=project_similarities,
-                        min_availability_hours=0,
-                        n_teams=n_build,
-                        pool_size=int(pool_size_ui),
-                        builder_kwargs=None,
+                st.caption(
+                    f"Required hours/person: {required_hours_per_person:.1f} | "
+                    f"Pool size (top K): {pool_size_ui} | "
+                    f"Eligible candidates (with fit): {len(eligible_profiles)} | "
+                    f"Need: {need_min}"
+                )
+
+                if int(n_teams_ui) > int(max_possible):
+                    st.error(
+                        f"Not enough eligible candidates to build {int(n_teams_ui)} teams.\n\n"
+                        f"- Requested: {int(n_teams_ui)} teams × {int(project.team_size)} people = {need_min}\n"
+                        f"- Eligible candidates: {len(eligible_profiles)}\n"
+                        f"- Max teams possible right now: {max_possible}\n\n"
+                        "Fix ideas:\n"
+                        "• Increase extracted candidates (N)\n"
+                        "• Increase pool size (top K)\n"
+                        "• Reduce team size\n"
                     )
+                    st.stop()
 
-                    if not teams:
-                        st.warning("No teams could be formed.")
-                    else:
-                        st.success(f"Built {len(teams)} team(s).")
+                teams = build_teams_round_robin(
+                    profiles=eligible_profiles,
+                    project=project,
+                    candidate_sim_matrix=cand_sim_matrix,
+                    candidate_ids=candidate_ids_order,
+                    project_similarities=project_similarities,
+                    min_availability_hours=0,
+                    n_teams=int(n_teams_ui),
+                    pool_size=int(pool_size_ui),
+                    builder_kwargs=None,
+                )
 
-                        summary = summarize_teams_for_ui(
-                            teams=teams,
-                            project=project,
-                            project_similarities=project_similarities,
-                            candidate_sim_matrix=cand_sim_matrix,
-                            candidate_ids_order=candidate_ids_order,
+                if not teams:
+                    st.warning("No teams could be formed.")
+                else:
+                    st.success(f"Built {len(teams)} team(s).")
+
+                    summary = summarize_teams_for_ui(
+                        teams=teams,
+                        project=project,
+                        project_similarities=project_similarities,
+                        candidate_sim_matrix=cand_sim_matrix,
+                        candidate_ids_order=candidate_ids_order,
+                    )
+                    teams_summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
+
+                    st.subheader("Team Overview (missing items/roles and internal diversity)")
+                    teams_rows = summary.get("teams", []) or []
+
+                    overview_rows = []
+                    for t in teams_rows:
+                        team_num = int(t.get("team_number", 0) or 0)
+                        team_ids = [str(x) for x in (t.get("member_ids", []) or [])]
+
+                        missing_items = t.get("missing_items", []) or []
+                        missing_roles = t.get("missing_roles", []) or []
+
+                        avg_internal_sim = float(t.get("avg_internal_similarity", 0.0) or 0.0)
+                        avg_internal_dissim = avg_team_dissimilarity(team_ids, dissim, id2idx)
+
+                        avg_fit_val = t.get("avg_fit", None)
+                        avg_fit_display = "N/A" if avg_fit_val is None else float(avg_fit_val)
+
+                        overview_rows.append(
+                            {
+                                "Team": team_num,
+                                "Avg fit": avg_fit_display,
+                                "Coverage (skills and tools) %": float(t.get("coverage_percent", 0.0) or 0.0),
+                                "Avg internal sim": round(avg_internal_sim, 4),
+                                "Avg internal dissim": round(avg_internal_dissim, 4),
+                                "Missing roles (list)": ", ".join(missing_roles) if missing_roles else "None",
+                                "Missing skills and tools (list)": ", ".join(missing_items) if missing_items else "None",
+                                "Members": ", ".join(team_ids),
+                            }
                         )
-                        teams_summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
 
-                        st.subheader("Team Overview (missing items/roles and internal diversity)")
+                    overview_df = pd.DataFrame(overview_rows)
+                    if not overview_df.empty:
 
-                        teams_rows = summary.get("teams", []) or []
-                        overview_rows = []
-                        for t in teams_rows:
-                            team_num = int(t.get("team_number", 0) or 0)
-                            team_ids = [str(x) for x in (t.get("member_ids", []) or [])]
+                        def _count_list_str(s: str) -> int:
+                            return 0 if s == "None" else len([x for x in s.split(",") if x.strip()])
 
-                            missing_items = t.get("missing_items", []) or []
-                            missing_roles = t.get("missing_roles", []) or []
+                        overview_df["Missing roles (#)"] = overview_df["Missing roles (list)"].apply(_count_list_str)
+                        overview_df["Missing items (#)"] = overview_df["Missing skills and tools (list)"].apply(_count_list_str)
 
-                            avg_internal_sim = float(t.get("avg_internal_similarity", 0.0) or 0.0)
-                            avg_internal_dissim = avg_team_dissimilarity(team_ids, dissim, id2idx)
+                        overview_df["Avg fit (sort)"] = overview_df["Avg fit"].apply(lambda x: float(x) if x != "N/A" else -1.0)
 
-                            overview_rows.append(
+                        overview_df = overview_df.sort_values(
+                            by=["Missing roles (#)", "Missing items (#)", "Avg fit (sort)"],
+                            ascending=[True, True, False],
+                        ).reset_index(drop=True)
+
+                        st.dataframe(
+                            overview_df[
+                                [
+                                    "Team",
+                                    "Avg fit",
+                                    "Coverage (skills and tools) %",
+                                    "Avg internal sim",
+                                    "Avg internal dissim",
+                                    "Missing roles (list)",
+                                    "Missing skills and tools (list)",
+                                    "Members",
+                                ]
+                            ],
+                            use_container_width=True,
+                        )
+
+                    overview_path = artifacts_root / "teams_overview.json"
+                    overview_path.write_text(
+                        json.dumps({"rows": overview_rows}, indent=2, ensure_ascii=False),
+                        encoding="utf-8",
+                    )
+                    st.caption(f"Saved: {overview_path}")
+
+                    out_all = []
+                    for t_idx, team in enumerate(teams, start=1):
+                        st.markdown(f"### Team {t_idx}")
+
+                        team_ids = [str(mem.id) for mem in team]
+                        team_avg_dissim = avg_team_dissimilarity(team_ids, dissim, id2idx)
+                        st.caption(f"Internal diversity (avg pairwise dissimilarity): {team_avg_dissim:.4f}")
+
+                        rows = []
+                        for m in team:
+                            rawp = profile_lookup.get(m.id, {}) or {}
+                            pers = rawp.get("personality", {}) or {}
+                            collab = rawp.get("collaboration", {}) or {}
+
+                            avg_dissim_tm = candidate_avg_dissim_to_teammates(
+                                candidate_id=str(m.id),
+                                team_ids=team_ids,
+                                dissim=dissim,
+                                id2idx=id2idx,
+                            )
+
+                            req_items = project.required_skills
+                            cand_cov_pct = candidate_requirement_coverage_percent(m, req_items)
+                            cand_matches = candidate_requirement_matches(m, req_items)
+
+                            fit_val = project_similarities.get(m.id, None)
+
+                            rows.append(
                                 {
-                                    "Team": team_num,
-                                    "Avg fit": float(t.get("avg_fit", 0.0) or 0.0),
-                                    "Coverage (skills and tools) %": float(t.get("coverage_percent", 0.0) or 0.0),
-                                    "Avg internal sim": round(avg_internal_sim, 4),
-                                    "Avg internal dissim": round(avg_internal_dissim, 4),
-                                    "Missing roles (list)": ", ".join(missing_roles) if missing_roles else "None",
-                                    "Missing skills and tools (list)": ", ".join(missing_items) if missing_items else "None",
-                                    "Members": ", ".join(team_ids),
+                                    "Candidate ID": m.id,
+                                    "Role": m.role,
+                                    "Req match (skills and tools)": ", ".join(cand_matches[:10]) if cand_matches else "None",
+                                    "Req coverage %": round(float(cand_cov_pct), 1),
+                                    "Belbin role": pers.get("Belbin_team_role", "Unknown"),
+                                    "Comm style": collab.get("communication_style", "Unknown"),
+                                    "Conflict style": collab.get("conflict_style", "Unknown"),
+                                    "Leadership": collab.get("leadership_preference", "Unknown"),
+                                    "Deadline": collab.get("deadline_discipline", "Unknown"),
+                                    "Availability": m.availability_hours,
+                                    "Fit": "N/A" if fit_val is None else round(float(fit_val), 4),
+                                    "Avg dissim to teammates": round(float(avg_dissim_tm), 4),
+                                    "Skills (sample)": ", ".join((m.skills or [])[:8]),
+                                    "Tools (sample)": ", ".join((m.tools or [])[:8]),
                                 }
                             )
 
-                        overview_df = pd.DataFrame(overview_rows)
-                        if not overview_df.empty:
+                        out_all.append(rows)
+                        st.dataframe(pd.DataFrame(rows), use_container_width=True)
 
-                            def _count_list_str(s: str) -> int:
-                                return 0 if s == "None" else len([x for x in s.split(",") if x.strip()])
-
-                            overview_df["Missing roles (#)"] = overview_df["Missing roles (list)"].apply(_count_list_str)
-                            overview_df["Missing items (#)"] = overview_df["Missing skills and tools (list)"].apply(_count_list_str)
-
-                            overview_df = overview_df.sort_values(
-                                by=["Missing roles (#)", "Missing items (#)", "Avg fit"],
-                                ascending=[True, True, False],
-                            ).reset_index(drop=True)
-
-                            st.dataframe(
-                                overview_df[
-                                    [
-                                        "Team",
-                                        "Avg fit",
-                                        "Coverage (skills and tools) %",
-                                        "Avg internal sim",
-                                        "Avg internal dissim",
-                                        "Missing roles (list)",
-                                        "Missing skills and tools (list)",
-                                        "Members",
-                                    ]
-                                ],
-                                use_container_width=True,
-                            )
-
-                        overview_path = artifacts_root / "teams_overview.json"
-                        overview_path.write_text(
-                            json.dumps({"rows": overview_rows}, indent=2, ensure_ascii=False),
-                            encoding="utf-8",
-                        )
-                        st.caption(f"Saved: {overview_path}")
-
-                        out_all = []
-                        for t_idx, team in enumerate(teams, start=1):
-                            st.markdown(f"### Team {t_idx}")
-
-                            team_ids = [str(mem.id) for mem in team]
-                            team_avg_dissim = avg_team_dissimilarity(team_ids, dissim, id2idx)
-                            st.caption(f"Internal diversity (avg pairwise dissimilarity): {team_avg_dissim:.4f}")
-
-                            rows = []
-                            for m in team:
-                                rawp = profile_lookup.get(m.id, {}) or {}
-                                pers = rawp.get("personality", {}) or {}
-                                collab = rawp.get("collaboration", {}) or {}
-
-                                avg_dissim_tm = candidate_avg_dissim_to_teammates(
-                                    candidate_id=str(m.id),
-                                    team_ids=team_ids,
-                                    dissim=dissim,
-                                    id2idx=id2idx,
-                                )
-
-                                req_items = project.required_skills
-                                cand_cov_pct = candidate_requirement_coverage_percent(m, req_items)
-                                cand_matches = candidate_requirement_matches(m, req_items)
-
-                                rows.append(
-                                    {
-                                        "Candidate ID": m.id,
-                                        "Role": m.role,
-                                        "Req match (skills and tools)": ", ".join(cand_matches[:10]) if cand_matches else "None",
-                                        "Req coverage %": round(float(cand_cov_pct), 1),
-                                        "Belbin role": pers.get("Belbin_team_role", "Unknown"),
-                                        "Comm style": collab.get("communication_style", "Unknown"),
-                                        "Conflict style": collab.get("conflict_style", "Unknown"),
-                                        "Leadership": collab.get("leadership_preference", "Unknown"),
-                                        "Deadline": collab.get("deadline_discipline", "Unknown"),
-                                        "Availability": m.availability_hours,
-                                        "Fit": round(float(project_similarities.get(m.id, 0.0)), 4),
-                                        "Avg dissim to teammates": round(float(avg_dissim_tm), 4),
-                                        "Skills (sample)": ", ".join((m.skills or [])[:8]),
-                                        "Tools (sample)": ", ".join((m.tools or [])[:8]),
-                                    }
-                                )
-
-                            out_all.append(rows)
-                            st.dataframe(pd.DataFrame(rows), use_container_width=True)
-
-                        teams_out_path_default.write_text(
-                            json.dumps(out_all, indent=2, ensure_ascii=False),
-                            encoding="utf-8",
-                        )
-                        st.caption(f"Saved: {teams_out_path_default}")
+                    teams_out_path_default.write_text(
+                        json.dumps(out_all, indent=2, ensure_ascii=False),
+                        encoding="utf-8",
+                    )
+                    st.caption(f"Saved: {teams_out_path_default}")
 
             except Exception as e:
                 st.error(f"Team building failed: {e}")
 
 
 
-# 2ND TAB Explanation Report (LLM)
+# TAB  -> Explanation Report
 
 with tab_explain:
     st.subheader("Team Report (LLM Explanation)")
@@ -731,7 +763,6 @@ with tab_explain:
                 teams_summary_path=teams_summary_path if teams_summary_path.exists() else None,
             )
 
-            # Latency log (explanation report) — LLM stage only
             log_latency(
                 log_path=latency_log_path,
                 stage="explanation_report",
@@ -743,8 +774,6 @@ with tab_explain:
             save_json(explain_out_path, payload)
             st.success(f"Saved: {explain_out_path}")
 
-          
-            
             st.markdown(payload.get("result", {}).get("report_markdown", "Not specified"))
 
             with st.expander("Raw JSON result"):
@@ -755,7 +784,7 @@ with tab_explain:
 
 
 
-# THIRD TAB EVALUATION
+# TAB 3-> Evaluation
 
 with tab_eval:
     st.subheader("Evaluation")
@@ -824,8 +853,6 @@ with tab_eval:
 
     st.divider()
 
-    
-    #  LATENCY RABLE FOR  THE 3 LLM stages 
     st.markdown("### Latency log (LLM stages)")
     if latency_log_path.exists() and latency_log_path.stat().st_size > 0:
         lines = latency_log_path.read_text(encoding="utf-8").strip().splitlines()
@@ -889,19 +916,13 @@ with tab_eval:
             st.json(summary)
 
     st.divider()
-
     st.subheader("Team Evaluation (deterministic, non-LLM)")
+
     status_line("teams_ui.json", teams_out_path_default)
     status_line("candidate_profiles.json", cand_profiles_clean_path)
     status_line("project_requirements.json", proj_req_path)
 
-    required_team_hours = st.number_input(
-        "Required total team hours per week (optional)",
-        min_value=0,
-        max_value=400,
-        value=0,
-        step=5,
-    )
+    
 
     if st.button("Run Team Evaluation"):
         if not (_file_ok(teams_out_path_default) and _file_ok(cand_profiles_clean_path) and _file_ok(proj_req_path)):
@@ -915,14 +936,12 @@ with tab_eval:
                 out_path=teams_eval_path,
                 candidate_ids_path=cand_ids_path if _file_ok(cand_ids_path) else None,
                 candidate_dissim_path=cand_dissim_path if _file_ok(cand_dissim_path) else None,
-                required_team_hours_per_week=float(required_team_hours),
+                required_team_hours_per_week=0.0,
+
             )
             st.success(f"Saved: {teams_eval_path}")
             st.json(summary)
 
-
-
-# LAST TAB
 with tab_raw:
     st.subheader("Raw JSON Outputs")
 

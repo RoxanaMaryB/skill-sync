@@ -181,7 +181,7 @@ class CandidateProfileEvaluator:
             if label_val != "Unknown" and evidence_val == "":
                 out["evidence_errors"].append(f"{field_name}: label set but evidence empty")
             if not evidence_ok(evidence_val):
-                out["evidence_errors"].append(f"{field_name}: evidence must be 3–20 words (or empty)")
+                out["evidence_errors"].append(f"{field_name}: evidence must be 3–8 words (or empty)")
             if not substring_in(source_text, evidence_val):
                 out["evidence_errors"].append(f"{field_name}: evidence not found verbatim in expected source")
 
