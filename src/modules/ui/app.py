@@ -1,29 +1,61 @@
-# src/modules/ui/app.py
+# src/modules/ui/app_simple.py
 import streamlit as st
-import json
 import pandas as pd
 import numpy as np
+import json
+import time
+import os
+import sys
+from pathlib import Path
+from datetime import datetime
 import plotly.graph_objects as go
 import plotly.express as px
-from pathlib import Path
-import sys
-import os
-import time
-import plotly.colors as pc
-from datetime import datetime
 
-# Add parent directory to path
-sys.path.append(str(Path(__file__).parent.parent.parent))
+# Add project root to path
+project_root = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(project_root))
 
-from shared.interfaces import CandidateProfile, ProjectDescription
+# Try to load .env file from project root
+env_path = project_root / ".env"
+if env_path.exists():
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(env_path)
+    except ImportError:
+        # Manual load if dotenv not available
+        with open(env_path, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    key, value = line.split('=', 1)
+                    os.environ[key.strip()] = value.strip()
 
-# Page configuration
-st.set_page_config(
-    page_title="SkillSync - AI Team Formation",
-    page_icon="🚀",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+# Safe conversion helper
+def safe_int_convert(value, default=0):
+    """Safely convert value to int, handling float strings."""
+    if value is None:
+        return default
+    try:
+        return int(float(str(value)))
+    except (ValueError, TypeError):
+        return default
+
+# Import consolidated modules
+try:
+    from modules import (
+        embed_candidates,
+        embed_project,
+        build_teams,
+        extract_candidates,
+        extract_project_requirements,
+        generate_team_report,
+        explain_team,
+        TeamBuilderConfig
+    )
+    MODULES_AVAILABLE = True
+except ImportError as e:
+    MODULES_AVAILABLE = False
+    st.error(f"Failed to import modules: {e}")
 
 # Custom CSS with modern design
 st.markdown("""
@@ -141,11 +173,6 @@ st.markdown("""
         color: white !important;
     }
     
-    /* Sidebar */
-    .sidebar .sidebar-content {
-        background: linear-gradient(180deg, #1E3A8A 0%, #3B82F6 100%);
-    }
-    
     /* Status indicators */
     .status-indicator {
         display: inline-block;
@@ -168,22 +195,16 @@ st.markdown("""
     .fade-in {
         animation: fadeIn 0.5s ease-out;
     }
-    
-    /* Grid layout */
-    .grid-container {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 1.5rem;
-        margin: 1.5rem 0;
-    }
-    
-    /* Table styling */
-    .dataframe {
-        border-radius: 12px;
-        overflow: hidden;
-    }
 </style>
 """, unsafe_allow_html=True)
+
+# Page configuration
+st.set_page_config(
+    page_title="SkillSync - AI Team Formation",
+    page_icon="🚀",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
 # Initialize session state
 if 'profiles' not in st.session_state:
@@ -210,22 +231,21 @@ with st.sidebar:
     # Logo and title
     col1, col2 = st.columns([1, 3])
     with col1:
-        st.image("https://img.icons8.com/color/96/000000/teamwork.png", width=60)
+        st.markdown("<div style='font-size: 2rem;'>🚀</div>", unsafe_allow_html=True)
     with col2:
         st.markdown("### **SkillSync**")
-        st.caption("v2.0 • Professional Edition")
+        st.caption("v2.0 • Modular Edition")
     
     st.markdown("---")
     
     # Navigation with icons
     st.markdown("### 📍 Navigation")
     page_options = {
-        "📤 Upload Data": "Upload candidate profiles and project data",
-        "⚙️ Project Setup": "Define project requirements and constraints",
-        "🔍 Candidate Analysis": "Explore candidate skills and compatibility",
-        "👥 Team Formation": "Build and visualize optimal teams",
-        "📊 Analytics Dashboard": "View metrics and insights",
-        "📋 Results & Export": "Review and export team configurations"
+        "📤 Upload Data": "Upload candidate profiles",
+        "⚙️ Project Setup": "Define project requirements",
+        "👥 Team Formation": "Build optimal teams",
+        "📊 Calculation Reports": "View detailed algorithm calculations", 
+        "📋 Results & Export": "Review and export teams"
     }
     
     selected_page = st.radio(
@@ -247,7 +267,7 @@ with st.sidebar:
     
     status_cols = st.columns(2)
     with status_cols[0]:
-        profile_count = len(st.session_state.profiles) if st.session_state.profiles else 0
+        profile_count = len(st.session_state.profiles)
         st.metric("👤 Candidates", profile_count, 
                  delta="+{}".format(profile_count) if profile_count > 0 else None)
     
@@ -256,183 +276,146 @@ with st.sidebar:
         st.metric("👥 Teams", team_count,
                  delta="+{}".format(team_count) if team_count > 0 else None)
     
-    # Progress bar for data completeness
-    if st.session_state.project and st.session_state.profiles:
-        completeness = min(100, (len(st.session_state.profiles) / 50) * 100)
-        st.progress(completeness / 100, text=f"Data Completeness: {completeness:.0f}%")
-    
+    # Module availability
     st.markdown("---")
-    
-    # Team member display with avatars
-    st.markdown("### 👨‍💻 Development Team")
-    team_members = [
-        {"name": "Shahzad", "role": "M1: Candidate Embeddings", "emoji": "🎯"},
-        {"name": "Roxana", "role": "M2: Project Embeddings", "emoji": "📊"},
-        {"name": "Ana", "role": "M3: Team Algorithm", "emoji": "🤖"},
-        {"name": "Saban", "role": "M4: Architecture & UI", "emoji": "💻"},
-        {"name": "Noor", "role": "M5: JSON & Explanations", "emoji": "📝"}
-    ]
-    
-    for member in team_members:
-        with st.container():
-            cols = st.columns([1, 4])
-            with cols[0]:
-                st.markdown(f"<div style='font-size: 1.5rem;'>{member['emoji']}</div>", unsafe_allow_html=True)
-            with cols[1]:
-                st.markdown(f"**{member['name']}**")
-                st.caption(member['role'])
-    
-    st.markdown("---")
+    st.markdown("### 🛠️ Module Status")
+    if MODULES_AVAILABLE:
+        st.success("✅ All modules available")
+    else:
+        st.error("❌ Modules not available")
     
     # Quick actions
+    st.markdown("---")
     st.markdown("### ⚡ Quick Actions")
     if st.button("🔄 Reset All Data", use_container_width=True):
         for key in ['profiles', 'project', 'teams', 'explanations']:
             st.session_state[key] = [] if key != 'project' else None
         st.rerun()
-    
-    if st.button("📥 Export Session", use_container_width=True):
-        st.info("Export functionality coming soon!")
 
 # Page 1: Upload Data
 if st.session_state.page == "📤 Upload Data":
     st.header("📤 Data Import Hub")
     
-    tab1, tab2, tab3 = st.tabs(["📁 Upload JSON", "📝 Raw Text Input", "🔄 Sample Data"])
+    tab1, tab2 = st.tabs(["📁 Upload CSV", "🔄 Sample Data"])
     
     with tab1:
-        st.markdown("### Upload Structured Data")
-        st.markdown("Upload candidate profiles in JSON format (output from M5 extraction)")
+        st.markdown("### Upload Candidate Data")
+        st.markdown("Upload candidate profiles in CSV format (e.g., StackOverflow survey data)")
         
         uploaded_file = st.file_uploader(
-            "Drag and drop JSON file here",
-            type=['json'],
-            help="Expected format: Array of candidate profile objects"
+            "Drag and drop CSV file here",
+            type=['csv'],
+            help="Expected format: CSV with candidate information"
         )
         
-        if uploaded_file is not None:
-            try:
-                data = json.load(uploaded_file)
-                st.session_state.profiles = data
-                
-                # Success animation
-                st.success(f"✅ Successfully loaded {len(data)} candidate profiles")
-                
-                # Display stats
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    st.metric("Total Profiles", len(data))
-                with col2:
-                    avg_skills = np.mean([len(p.get('skills', [])) for p in data]) if data else 0
-                    st.metric("Avg Skills/Profile", f"{avg_skills:.1f}")
-                with col3:
-                    roles = set(p.get('role', '') for p in data)
-                    st.metric("Unique Roles", len(roles))
-                
-                # Preview with expandable sections
-                with st.expander("🔍 Preview Profiles (First 5)", expanded=True):
-                    df = pd.DataFrame(data[:5])
-                    st.dataframe(df, use_container_width=True)
-                
-                # Skills cloud visualization
-                with st.expander("☁️ Skills Distribution", expanded=False):
-                    all_skills = []
-                    for profile in data:
-                        all_skills.extend(profile.get('skills', []))
+        if uploaded_file is not None and MODULES_AVAILABLE:
+            if st.button("🔧 Extract Profiles", type="primary", use_container_width=True):
+                with st.spinner("🔄 Extracting profiles from CSV..."):
+                    try:
+                        # Save uploaded file temporarily
+                        temp_path = "temp_upload.csv"
+                        with open(temp_path, "wb") as f:
+                            f.write(uploaded_file.getvalue())
+                        
+                        # Extract candidates using module
+                        profiles, _ = extract_candidates(temp_path)
+                        
+                        if profiles:
+                            # Convert to consistent format
+                            candidate_objects = []
+                            for i, p in enumerate(profiles[:20]):  # Limit to 20 for performance
+                                # Safely convert values
+                                exp_years = safe_int_convert(p.get('metadata', {}).get('work_experience_years', '0'))
+                                avail_hours = safe_int_convert(p.get('constraints', {}).get('weekly_availability_hours', '20'))
+                                
+                                candidate_objects.append({
+                                    "id": p.get('id', f"candidate_{i}"),
+                                    "name": f"Candidate {p.get('id', f'{i}')}",
+                                    "role": p.get('metadata', {}).get('dev_type', 'Unknown'),
+                                    "skills": p.get('technical', {}).get('skills', []),
+                                    "experience_years": exp_years,
+                                    "availability_hours": avail_hours,
+                                    "tools": p.get('technical', {}).get('tools', [])
+                                })
+                            
+                            st.session_state.profiles = candidate_objects
+                            
+                            # Clean up
+                            os.remove(temp_path)
+                            
+                            # Success animation
+                            st.success(f"✅ Successfully loaded {len(candidate_objects)} candidate profiles")
+                            st.balloons()
+                            
+                            # Display stats
+                            col1, col2, col3 = st.columns(3)
+                            with col1:
+                                st.metric("Total Profiles", len(candidate_objects))
+                            with col2:
+                                avg_skills = np.mean([len(p.get('skills', [])) for p in candidate_objects]) if candidate_objects else 0
+                                st.metric("Avg Skills/Profile", f"{avg_skills:.1f}")
+                            with col3:
+                                roles = set(p.get('role', '') for p in candidate_objects)
+                                st.metric("Unique Roles", len(roles))
+                            
+                            # Preview with expandable sections
+                            with st.expander("🔍 Preview Profiles (First 5)", expanded=True):
+                                df = pd.DataFrame(candidate_objects[:5])
+                                st.dataframe(df, use_container_width=True)
+                            
+                            # Skills cloud visualization
+                            with st.expander("☁️ Skills Distribution", expanded=False):
+                                all_skills = []
+                                for profile in candidate_objects:
+                                    all_skills.extend(profile.get('skills', []))
+                                
+                                if all_skills:
+                                    skill_counts = pd.Series(all_skills).value_counts().head(20)
+                                    fig = px.bar(
+                                        x=skill_counts.values,
+                                        y=skill_counts.index,
+                                        orientation='h',
+                                        title="Top 20 Skills",
+                                        labels={'x': 'Frequency', 'y': 'Skill'},
+                                        color=skill_counts.values,
+                                        color_continuous_scale='Blues'
+                                    )
+                                    fig.update_layout(height=400)
+                                    st.plotly_chart(fig, use_container_width=True)
                     
-                    if all_skills:
-                        skill_counts = pd.Series(all_skills).value_counts().head(20)
-                        fig = px.bar(
-                            x=skill_counts.values,
-                            y=skill_counts.index,
-                            orientation='h',
-                            title="Top 20 Skills",
-                            labels={'x': 'Frequency', 'y': 'Skill'},
-                            color=skill_counts.values,
-                            color_continuous_scale='Blues'
-                        )
-                        fig.update_layout(height=400)
-                        st.plotly_chart(fig, use_container_width=True)
-                    
-            except Exception as e:
-                st.error(f"❌ Error loading file: {str(e)}")
+                    except Exception as e:
+                        st.error(f"❌ Error loading file: {str(e)}")
+                        if "OPENROUTER_API_KEY" in str(e):
+                            st.info("💡 Please set your OPENROUTER_API_KEY in the .env file")
     
     with tab2:
-        st.markdown("### Process Raw Text")
-        st.markdown("Paste raw candidate profiles for automatic extraction")
-        
-        raw_text = st.text_area(
-            "Enter candidate profiles (one per candidate):",
-            height=250,
-            placeholder="""Example format:
-John Doe
-Role: Full Stack Developer
-Skills: Python, React, SQL, Docker
-Experience: 5 years
-Tools: VS Code, Git, JIRA
-
-Jane Smith
-Role: UX Designer
-Skills: Figma, Adobe XD, User Research
-Experience: 3 years
-Tools: Sketch, Miro"""
-        )
-        
-        col1, col2 = st.columns([1, 4])
-        with col1:
-            extract_btn = st.button("🔧 Extract Profiles", type="primary", use_container_width=True)
-        with col2:
-            st.caption("This will call M5's JSON extraction module")
-        
-        if extract_btn:
-            if raw_text.strip():
-                with st.spinner("🔄 Extracting profiles from text..."):
-                    # Placeholder for actual extraction
-                    st.session_state.profiles = [
-                        {
-                            "id": "sample_1",
-                            "name": "Sample Candidate",
-                            "role": "Developer",
-                            "skills": ["Python", "React"],
-                            "experience_years": 3,
-                            "tools": ["Git", "VS Code"]
-                        }
-                    ]
-                    time.sleep(1)  # Simulate processing
-                    
-                    st.success("✅ Profiles extracted successfully!")
-                    st.balloons()
-            else:
-                st.warning("⚠️ Please enter some profile text")
-    
-    with tab3:
         st.markdown("### Load Sample Data")
         st.markdown("Quickly get started with sample candidate profiles")
         
         sample_options = {
             "Small Team (5 candidates)": 5,
-            "Medium Team (15 candidates)": 15,
-            "Large Team (30 candidates)": 30
+            "Medium Team (10 candidates)": 10,
+            "Large Team (20 candidates)": 20
         }
         
         selected_sample = st.selectbox("Choose sample size:", list(sample_options.keys()))
         
         if st.button("📥 Load Sample Data", type="primary", use_container_width=True):
-            with st.spinner(f"Loading {selected_sample}..."):
+            with st.spinner(f"Generating {selected_sample} sample profiles..."):
                 # Generate sample data
                 sample_data = []
-                roles = ["Frontend Developer", "Backend Developer", "UX Designer", "Data Scientist", "DevOps Engineer"]
-                skills_pool = ["Python", "JavaScript", "React", "Node.js", "SQL", "Docker", "AWS", "Figma", "ML", "Agile"]
+                roles = ["Frontend Developer", "Backend Developer", "Full Stack Developer", "UX Designer", "DevOps Engineer"]
+                skills_pool = ["Python", "JavaScript", "React", "Node.js", "SQL", "Docker", "AWS", "Figma", "ML", "Agile", "Git", "REST API", "HTML/CSS", "TypeScript", "Vue.js", "Angular", "MongoDB", "PostgreSQL", "Redis", "Kubernetes"]
                 
                 for i in range(sample_options[selected_sample]):
                     sample_data.append({
-                        "id": f"candidate_{i+1}",
+                        "id": f"sample_{i+1}",
                         "name": f"Candidate {chr(65 + i)}",
                         "role": roles[i % len(roles)],
-                        "skills": np.random.choice(skills_pool, size=np.random.randint(3, 7), replace=False).tolist(),
-                        "experience_years": np.random.randint(1, 10),
-                        "tools": np.random.choice(["Git", "VS Code", "JIRA", "Docker", "AWS"], size=3, replace=False).tolist(),
-                        "availability_hours": np.random.randint(20, 40)
+                        "skills": np.random.choice(skills_pool, size=np.random.randint(3, 8), replace=False).tolist(),
+                        "experience_years": np.random.randint(1, 15),
+                        "availability_hours": np.random.randint(20, 40),
+                        "tools": np.random.choice(["Git", "VS Code", "JIRA", "Docker", "AWS", "Figma", "Postman", "Slack"], size=3, replace=False).tolist()
                     })
                 
                 st.session_state.profiles = sample_data
@@ -443,13 +426,20 @@ Tools: Sketch, Miro"""
 elif st.session_state.page == "⚙️ Project Setup":
     st.header("⚙️ Project Configuration")
     
+    if not st.session_state.profiles:
+        st.warning("📭 No candidate profiles found. Please upload data first.")
+        if st.button("📤 Go to Upload Data"):
+            st.session_state.page = "📤 Upload Data"
+            st.rerun()
+        st.stop()
+    
     # Project header with timeline
     col1, col2 = st.columns([3, 1])
     with col1:
         st.markdown("### Define Your Project Requirements")
         st.caption("Configure the project that needs team formation")
     with col2:
-        st.metric("Current Step", "2/6", "Setup")
+        st.metric("Candidates", len(st.session_state.profiles))
     
     # Main configuration area
     config_col1, config_col2 = st.columns([2, 1])
@@ -469,15 +459,14 @@ elif st.session_state.page == "⚙️ Project Setup":
 • Modern UI/UX redesign
 • Recommendation engine integration
 • Performance optimization
-• Mobile-responsive design""",
+• Mobile-responsive design
+
+Technical requirements:
+- Frontend: React/TypeScript
+- Backend: Python/FastAPI
+- Database: PostgreSQL
+- DevOps: Docker/Kubernetes""",
             help="Detailed description helps AI understand project needs better"
-        )
-        
-        st.markdown("#### 🎯 Key Objectives")
-        objectives = st.text_area(
-            "Primary Goals & Success Metrics",
-            height=100,
-            placeholder="• Improve user conversion rate by 20%\n• Reduce page load time to under 2 seconds\n• Increase mobile traffic engagement\n• Implement scalable architecture"
         )
     
     with config_col2:
@@ -485,25 +474,20 @@ elif st.session_state.page == "⚙️ Project Setup":
         
         team_size = st.slider(
             "Team Size",
-            2, 10, 4,
+            2, 8, 4,
             help="Number of team members needed"
+        )
+        
+        n_teams = st.slider(
+            "Number of Teams",
+            1, 5, 1,
+            help="How many team configurations to generate"
         )
         
         duration = st.selectbox(
             "Project Duration",
-            ["2 weeks", "1 month", "2 months", "3 months", "6 months", "6 months+"],
+            ["2 weeks", "1 month", "2 months", "3 months", "6 months"],
             index=2
-        )
-        
-        urgency = st.select_slider(
-            "Urgency Level",
-            options=["Low", "Medium", "High", "Critical"],
-            value="Medium"
-        )
-        
-        budget_tier = st.selectbox(
-            "Budget Tier",
-            ["Basic", "Standard", "Premium", "Enterprise"]
         )
     
     st.markdown("---")
@@ -515,84 +499,104 @@ elif st.session_state.page == "⚙️ Project Setup":
     
     with roles_col:
         st.markdown("#### 👥 Required Roles")
+        # Get unique roles from candidates
+        candidate_roles = list(set([p.get('role', '') for p in st.session_state.profiles if p.get('role')]))
+        candidate_roles = [r for r in candidate_roles if r and r != 'Unknown']
+        
         required_roles = st.multiselect(
             "Select essential roles",
-            ["Frontend Developer", "Backend Developer", "Full Stack Developer", 
-             "UX/UI Designer", "Data Scientist", "Machine Learning Engineer",
-             "DevOps Engineer", "QA Engineer", "Project Manager", 
-             "Product Owner", "Scrum Master", "Business Analyst"],
-            default=["Frontend Developer", "Backend Developer", "UX/UI Designer"],
+            candidate_roles + ["Frontend Developer", "Backend Developer", "Full Stack Developer", 
+                             "UX/UI Designer", "Data Scientist", "DevOps Engineer"],
+            default=["Frontend Developer", "Backend Developer"] if "Frontend Developer" in candidate_roles else candidate_roles[:2],
             help="Select roles crucial for project success"
         )
-        
-        # Role priority
-        if required_roles:
-            st.markdown("##### 🎯 Role Priority")
-            for role in required_roles:
-                priority = st.slider(f"Priority for {role}", 1, 5, 3, key=f"priority_{role}")
     
     with skills_col:
         st.markdown("#### 💡 Required Skills")
-        required_skills = st.multiselect(
-            "Select required skills",
-            ["Python", "JavaScript", "TypeScript", "React", "Vue.js", "Angular",
-             "Node.js", "Django", "Flask", "FastAPI", "Figma", "Adobe XD",
-             "SQL", "NoSQL", "MongoDB", "PostgreSQL", "Docker", "Kubernetes",
-             "AWS", "Azure", "GCP", "CI/CD", "Git", "Agile", "Scrum",
-             "Machine Learning", "Data Analysis", "TensorFlow", "PyTorch"],
-            default=["Python", "React", "SQL", "Docker"],
-            help="Technical skills needed for the project"
-        )
         
-        # Skill level requirements
-        if required_skills:
-            st.markdown("##### 📊 Minimum Skill Levels")
-            for skill in required_skills[:5]:  # Limit to first 5 for UI
-                level = st.select_slider(
-                    f"{skill} level",
-                    options=["Basic", "Intermediate", "Advanced", "Expert"],
-                    value="Intermediate",
-                    key=f"level_{skill}"
-                )
+        # Common skills list (always available)
+        common_skills = [
+            "Python", "JavaScript", "TypeScript", "React", "Vue.js", "Angular",
+            "Node.js", "Django", "Flask", "FastAPI", "SQL", "NoSQL", "MongoDB",
+            "PostgreSQL", "Docker", "Kubernetes", "AWS", "Azure", "GCP", "CI/CD",
+            "Git", "Agile", "Scrum", "Machine Learning", "Data Analysis", "Figma",
+            "HTML", "CSS", "Java", "C#", "Go", "Rust", "Ruby", "PHP", "Swift",
+            "Kotlin", "R", "TensorFlow", "PyTorch", "Spark", "Hadoop"
+        ]
+        
+        # Get unique skills from candidates
+        candidate_skills = []
+        for profile in st.session_state.profiles:
+            candidate_skills.extend(profile.get('skills', []))
+        unique_candidate_skills = sorted(list(set(candidate_skills)))
+        
+        # Combine lists and remove duplicates
+        all_available_skills = sorted(list(set(common_skills + unique_candidate_skills)))
+        
+        # Create two columns for better organization
+        skill_col1, skill_col2 = st.columns(2)
+        
+        with skill_col1:
+            required_skills = st.multiselect(
+                "Select required skills",
+                all_available_skills,
+                default=["Python", "React", "SQL", "Docker", "JavaScript", "Git", "AWS"],
+                help="Technical skills needed for the project. You can select any skill."
+            )
+        
+        with skill_col2:
+            # Allow manual skill entry
+            st.markdown("##### ➕ Add Custom Skill")
+            custom_skill = st.text_input(
+                "Enter a skill not in the list",
+                placeholder="e.g., Next.js, GraphQL, Redis",
+                key="custom_skill_input"
+            )
+            
+            if custom_skill and st.button("Add Skill", key="add_skill_btn"):
+                if custom_skill.strip() and custom_skill not in required_skills:
+                    required_skills.append(custom_skill.strip())
+                    st.success(f"Added '{custom_skill}' to required skills")
+                    st.rerun()
     
     st.markdown("---")
     
-    # Advanced Settings
-    with st.expander("⚙️ Advanced Settings", expanded=False):
-        adv_col1, adv_col2 = st.columns(2)
-        
-        with adv_col1:
-            st.markdown("#### 🎭 Team Dynamics")
-            communication_style = st.selectbox(
-                "Preferred Communication Style",
-                ["Async Preferred", "Sync Required", "Hybrid", "Flexible"]
-            )
+    # AI Extraction Option
+    if MODULES_AVAILABLE:
+        with st.expander("🤖 AI-Powered Requirement Extraction", expanded=False):
+            st.markdown("Let AI analyze your project description and extract requirements automatically")
             
-            collaboration_tools = st.multiselect(
-                "Required Collaboration Tools",
-                ["Slack", "Microsoft Teams", "Zoom", "JIRA", "Trello", "Asana", "Confluence", "Notion"]
-            )
-        
-        with adv_col2:
-            st.markdown("#### 📅 Timeline Constraints")
-            start_date = st.date_input("Project Start Date")
-            milestone_frequency = st.selectbox(
-                "Milestone Frequency",
-                ["Weekly", "Bi-weekly", "Monthly", "Quarterly"]
-            )
-            
-            timezone_preference = st.selectbox(
-                "Timezone Overlap Required",
-                ["Flexible", "±2 hours", "±4 hours", "Same timezone"]
-            )
+            if st.button("🔍 Extract Requirements from Description"):
+                if project_desc.strip():
+                    with st.spinner("AI is analyzing your project description..."):
+                        try:
+                            extracted_req = extract_project_requirements(project_desc)
+                            tech_req = extracted_req.get('technical_requirements', {})
+                            
+                            # Update the multiselects
+                            extracted_skills = tech_req.get('skills', [])
+                            extracted_roles = tech_req.get('roles', [])
+                            
+                            st.success(f"✅ Extracted {len(extracted_skills)} skills and {len(extracted_roles)} roles")
+                            
+                            # Show what was extracted
+                            if extracted_skills:
+                                st.info(f"**Skills found:** {', '.join(extracted_skills[:10])}")
+                            if extracted_roles:
+                                st.info(f"**Roles suggested:** {', '.join(extracted_roles[:10])}")
+                            
+                        except Exception as e:
+                            st.error(f"❌ Extraction failed: {e}")
+                else:
+                    st.warning("Please enter a project description first")
     
     st.markdown("---")
     
-    # Generate button with confirmation
-    generate_col1, generate_col2, generate_col3 = st.columns([1, 2, 1])
+    # Save Project Button
+    save_col1, save_col2, save_col3 = st.columns([1, 2, 1])
     
-    with generate_col2:
-        if st.button("🚀 Generate Team Recommendations", type="primary", use_container_width=True):
+    with save_col2:
+        if st.button("💾 Save Project Configuration", type="primary", use_container_width=True):
             if not project_desc:
                 st.warning("⚠️ Please enter a project description")
             else:
@@ -600,307 +604,27 @@ elif st.session_state.page == "⚙️ Project Setup":
                 project = {
                     "title": project_title or "Untitled Project",
                     "description": project_desc,
-                    "objectives": objectives,
                     "required_roles": required_roles,
                     "required_skills": required_skills,
                     "team_size": team_size,
+                    "n_teams": n_teams,
                     "duration": duration,
-                    "urgency": urgency,
-                    "budget_tier": budget_tier,
                     "timestamp": datetime.now().isoformat()
                 }
                 
                 st.session_state.project = project
+                st.success("✅ Project configuration saved!")
                 
-                # Show processing animation
-                with st.status("🚀 Building optimal teams...", expanded=True) as status:
-                    steps = [
-                        ("📊 Analyzing candidate profiles", 0.5),
-                        ("🎯 Calculating project-candidate fit", 1.0),
-                        ("🤖 Running AI optimization algorithms", 1.5),
-                        ("👥 Forming balanced teams", 1.0),
-                        ("💡 Generating recommendations", 0.5),
-                        ("✅ Finalizing results", 0.5)
-                    ]
-                    
-                    progress_bar = st.progress(0)
-                    for i, (step_text, step_time) in enumerate(steps):
-                        status.write(f"{step_text}...")
-                        time.sleep(step_time)
-                        progress_bar.progress((i + 1) / len(steps))
-                    
-                    # Placeholder teams
-                    st.session_state.teams = [
-                        [
-                            {"id": "1", "name": "Alex Chen", "role": "Frontend Lead", "skills": ["React", "TypeScript", "UI/UX"], "fit_score": 0.92},
-                            {"id": "2", "name": "Maria Rodriguez", "role": "Backend Architect", "skills": ["Python", "Django", "AWS"], "fit_score": 0.88},
-                            {"id": "3", "name": "James Wilson", "role": "UX Designer", "skills": ["Figma", "User Research", "Prototyping"], "fit_score": 0.85},
-                            {"id": "4", "name": "Sarah Johnson", "role": "DevOps Engineer", "skills": ["Docker", "Kubernetes", "CI/CD"], "fit_score": 0.90}
-                        ],
-                        [
-                            {"id": "5", "name": "David Kim", "role": "Full Stack", "skills": ["React", "Node.js", "MongoDB"], "fit_score": 0.87},
-                            {"id": "6", "name": "Lisa Wang", "role": "Backend Developer", "skills": ["Python", "FastAPI", "PostgreSQL"], "fit_score": 0.89},
-                            {"id": "7", "name": "Tom Baker", "role": "Frontend Developer", "skills": ["Vue.js", "JavaScript", "CSS"], "fit_score": 0.84},
-                            {"id": "8", "name": "Emma Davis", "role": "UI Designer", "skills": ["Adobe XD", "Prototyping", "Design Systems"], "fit_score": 0.86}
-                        ]
-                    ]
-                    
-                    st.session_state.explanations = [
-                        "**Team Alpha**: High-performing team with clear role specialization. Excellent for complex projects requiring deep expertise in each domain. Strong leadership structure.",
-                        "**Team Beta**: Versatile team with overlapping skills. Ideal for agile projects requiring flexibility and cross-functional collaboration. Good for fast-paced environments."
-                    ]
-                    
-                    status.update(label="✅ Team formation complete!", state="complete")
-                    st.balloons()
-                
-                st.success(f"✨ Generated {len(st.session_state.teams)} team configurations!")
-                st.session_state.page = "📋 Results & Export"
+                # Auto-navigate to next page
+                st.session_state.page = "👥 Team Formation"
                 st.rerun()
 
-# Page 3: Candidate Analysis
-elif st.session_state.page == "🔍 Candidate Analysis":
-    st.header("🔍 Candidate Intelligence Hub")
-    
-    if not st.session_state.profiles:
-        st.warning("📭 No candidate profiles found. Please upload data first.")
-        if st.button("📤 Go to Upload Data"):
-            st.session_state.page = "📤 Upload Data"
-            st.rerun()
-        st.stop()
-    
-    # Metrics dashboard
-    st.markdown("### 📊 Candidate Pool Overview")
-    
-    metrics_cols = st.columns(5)
-    with metrics_cols[0]:
-        st.metric("Total Candidates", len(st.session_state.profiles))
-    with metrics_cols[1]:
-        avg_exp = np.mean([p.get('experience_years', 0) for p in st.session_state.profiles])
-        st.metric("Avg Experience", f"{avg_exp:.1f} yrs")
-    with metrics_cols[2]:
-        total_skills = len(set([skill for p in st.session_state.profiles for skill in p.get('skills', [])]))
-        st.metric("Unique Skills", total_skills)
-    with metrics_cols[3]:
-        roles = set(p.get('role', 'Unknown') for p in st.session_state.profiles)
-        st.metric("Unique Roles", len(roles))
-    with metrics_cols[4]:
-        avg_availability = np.mean([p.get('availability_hours', 0) for p in st.session_state.profiles])
-        st.metric("Avg Availability", f"{avg_availability:.0f}h/wk")
-    
-    tab1, tab2, tab3 = st.tabs(["📋 Candidate Directory", "📈 Skills Analysis", "🎯 Compatibility Matrix"])
-    
-    with tab1:
-        st.markdown("#### Browse Candidate Profiles")
-        
-        # Filters
-        filter_col1, filter_col2, filter_col3 = st.columns(3)
-        with filter_col1:
-            role_filter = st.multiselect(
-                "Filter by Role",
-                list(roles),
-                placeholder="All roles"
-            )
-        
-        with filter_col2:
-            min_exp = st.slider("Min Experience (years)", 0, 20, 0)
-        
-        with filter_col3:
-            skill_filter = st.multiselect(
-                "Filter by Skill",
-                sorted(set([skill for p in st.session_state.profiles for skill in p.get('skills', [])])),
-                placeholder="Any skill"
-            )
-        
-        # Filter logic
-        filtered_profiles = st.session_state.profiles
-        if role_filter:
-            filtered_profiles = [p for p in filtered_profiles if p.get('role') in role_filter]
-        if min_exp > 0:
-            filtered_profiles = [p for p in filtered_profiles if p.get('experience_years', 0) >= min_exp]
-        if skill_filter:
-            filtered_profiles = [p for p in filtered_profiles 
-                               if any(skill in p.get('skills', []) for skill in skill_filter)]
-        
-        st.markdown(f"**Showing {len(filtered_profiles)} of {len(st.session_state.profiles)} candidates**")
-        
-        # Display profiles in cards
-        for i, profile in enumerate(filtered_profiles[:20]):  # Limit display
-            with st.container():
-                cols = st.columns([1, 4, 1])
-                with cols[0]:
-                    # Avatar placeholder
-                    st.markdown(f"<div style='font-size: 2rem; text-align: center;'>👤</div>", 
-                               unsafe_allow_html=True)
-                
-                with cols[1]:
-                    st.markdown(f"##### {profile.get('name', 'Unknown')}")
-                    st.markdown(f"**{profile.get('role', 'No role specified')}** • {profile.get('experience_years', 0)} years experience")
-                    
-                    # Skills badges
-                    skills = profile.get('skills', [])[:8]
-                    if skills:
-                        badges_html = " ".join([f"<span class='skill-badge'>{skill}</span>" for skill in skills])
-                        st.markdown(badges_html, unsafe_allow_html=True)
-                    
-                    # Tools
-                    tools = profile.get('tools', [])
-                    if tools:
-                        st.caption(f"🛠️ Tools: {', '.join(tools[:5])}")
-                
-                with cols[2]:
-                    availability = profile.get('availability_hours', 0)
-                    if availability >= 30:
-                        st.metric("Availability", f"{availability}h", "High")
-                    elif availability >= 20:
-                        st.metric("Availability", f"{availability}h", "Medium")
-                    else:
-                        st.metric("Availability", f"{availability}h", "Limited")
-                
-                st.markdown("---")
-    
-    with tab2:
-        st.markdown("#### Skills Distribution & Analysis")
-        
-        # Extract all skills
-        all_skills = []
-        for profile in st.session_state.profiles:
-            all_skills.extend(profile.get('skills', []))
-        
-        if all_skills:
-            skill_series = pd.Series(all_skills)
-            skill_counts = skill_series.value_counts()
-            
-            # Top skills chart
-            col1, col2 = st.columns([2, 1])
-            
-            with col1:
-                fig1 = px.bar(
-                    x=skill_counts.head(15).values,
-                    y=skill_counts.head(15).index,
-                    orientation='h',
-                    title="Top 15 Most Common Skills",
-                    labels={'x': 'Number of Candidates', 'y': 'Skill'},
-                    color=skill_counts.head(15).values,
-                    color_continuous_scale='Viridis'
-                )
-                fig1.update_layout(height=500)
-                st.plotly_chart(fig1, use_container_width=True)
-            
-            with col2:
-                # Skill combinations
-                st.markdown("##### 🔗 Skill Co-occurrence")
-                # Simple co-occurrence example
-                common_pairs = [
-                    ("Python", "Django"),
-                    ("React", "JavaScript"),
-                    ("AWS", "Docker"),
-                    ("SQL", "Python"),
-                    ("Figma", "UI/UX")
-                ]
-                
-                for skill1, skill2 in common_pairs[:5]:
-                    count1 = skill_counts.get(skill1, 0)
-                    count2 = skill_counts.get(skill2, 0)
-                    if count1 and count2:
-                        overlap = len([p for p in st.session_state.profiles 
-                                     if skill1 in p.get('skills', []) and skill2 in p.get('skills', [])])
-                        st.metric(f"{skill1} + {skill2}", overlap, 
-                                 f"{overlap/min(count1, count2)*100:.0f}% overlap")
-            
-            # Role-skill matrix
-            st.markdown("##### 🎯 Skills by Role")
-            roles_list = list(roles)
-            if len(roles_list) > 0:
-                role_skill_data = []
-                for role in roles_list[:10]:  # Limit to first 10 roles
-                    role_profiles = [p for p in st.session_state.profiles if p.get('role') == role]
-                    role_skills = [skill for p in role_profiles for skill in p.get('skills', [])]
-                    top_skills = pd.Series(role_skills).value_counts().head(5).index.tolist()
-                    for skill in top_skills:
-                        role_skill_data.append({"Role": role, "Skill": skill, "Count": role_skills.count(skill)})
-                
-                if role_skill_data:
-                    df_role_skill = pd.DataFrame(role_skill_data)
-                    fig2 = px.density_heatmap(
-                        df_role_skill,
-                        x="Role",
-                        y="Skill",
-                        z="Count",
-                        title="Role-Skill Heatmap",
-                        color_continuous_scale="Blues"
-                    )
-                    fig2.update_layout(height=400)
-                    st.plotly_chart(fig2, use_container_width=True)
-    
-    with tab3:
-        st.markdown("#### Candidate Compatibility Matrix")
-        st.info("👆 This visualization shows similarity between candidates. Hover to see details.")
-        
-        # Generate sample similarity matrix
-        n = min(15, len(st.session_state.profiles))
-        sample_profiles = st.session_state.profiles[:n]
-        names = [p.get('name', f"Candidate {i}") for i, p in enumerate(sample_profiles)]
-        
-        # Create synthetic similarity matrix
-        np.random.seed(42)
-        sim_matrix = np.random.rand(n, n) * 0.4 + 0.3
-        np.fill_diagonal(sim_matrix, 1.0)
-        sim_matrix = (sim_matrix + sim_matrix.T) / 2  # Make symmetric
-        
-        fig = go.Figure(data=go.Heatmap(
-            z=sim_matrix,
-            x=names,
-            y=names,
-            colorscale='RdBu',
-            zmin=0,
-            zmax=1,
-            hoverongaps=False,
-            text=np.round(sim_matrix, 2),
-            texttemplate='%{text}',
-            textfont={"size": 10}
-        ))
-        
-        fig.update_layout(
-            title="Candidate Similarity Matrix",
-            xaxis_title="Candidates",
-            yaxis_title="Candidates",
-            height=600,
-            xaxis_tickangle=45
-        )
-        
-        st.plotly_chart(fig, use_container_width=True)
-        
-        # Clusters visualization
-        st.markdown("##### 🎨 Candidate Clusters")
-        if n >= 5:
-            from sklearn.decomposition import PCA
-            
-            # Dimensionality reduction for visualization
-            pca = PCA(n_components=2)
-            coords = pca.fit_transform(sim_matrix)
-            
-            fig_cluster = px.scatter(
-                x=coords[:, 0],
-                y=coords[:, 1],
-                text=names,
-                title="Candidate Clusters (PCA Projection)",
-                labels={'x': 'PC1', 'y': 'PC2'}
-            )
-            
-            fig_cluster.update_traces(
-                textposition='top center',
-                marker=dict(size=12, color=np.arange(n), colorscale='Viridis', showscale=True)
-            )
-            
-            fig_cluster.update_layout(height=400)
-            st.plotly_chart(fig_cluster, use_container_width=True)
-
-# Page 4: Team Formation
+# Page 3: Team Formation
 elif st.session_state.page == "👥 Team Formation":
     st.header("👥 Intelligent Team Formation")
     
-    if not st.session_state.project:
-        st.warning("📋 Please set up a project first")
+    if not st.session_state.project or not st.session_state.profiles:
+        st.warning("📋 Please set up a project and upload candidates first")
         if st.button("⚙️ Go to Project Setup"):
             st.session_state.page = "⚙️ Project Setup"
             st.rerun()
@@ -911,52 +635,22 @@ elif st.session_state.page == "👥 Team Formation":
     # Algorithm visualization section
     st.markdown("#### 🤖 Team Formation Algorithm")
     
-    # Algorithm steps with visualization
+    # Algorithm steps
     steps = [
-        {
-            "step": 1,
-            "title": "Candidate Filtering",
-            "description": "Filter candidates by availability, skills, and role requirements",
-            "icon": "🔍"
-        },
-        {
-            "step": 2,
-            "title": "Fit Scoring",
-            "description": "Calculate project-candidate fit scores using embeddings",
-            "icon": "🎯"
-        },
-        {
-            "step": 3,
-            "title": "Diversity Analysis",
-            "description": "Analyze team diversity across skills, experience, and collaboration styles",
-            "icon": "🌈"
-        },
-        {
-            "step": 4,
-            "title": "Optimization",
-            "description": "Use greedy algorithm to maximize team effectiveness",
-            "icon": "⚡"
-        },
-        {
-            "step": 5,
-            "title": "Team Assembly",
-            "description": "Form balanced teams based on optimization results",
-            "icon": "👥"
-        }
+        {"step": 1, "title": "Candidate Embeddings", "description": "Convert profiles to vector embeddings", "icon": "🔍"},
+        {"step": 2, "title": "Project Embeddings", "description": "Convert project requirements to vectors", "icon": "🎯"},
+        {"step": 3, "title": "Similarity Calculation", "description": "Calculate candidate-project fit scores", "icon": "📊"},
+        {"step": 4, "title": "Team Optimization", "description": "Use greedy algorithm to form teams", "icon": "⚡"},
+        {"step": 5, "title": "Team Assembly", "description": "Finalize balanced teams", "icon": "👥"}
     ]
     
-    # Display steps as timeline
-    st.markdown("##### 📋 Algorithm Pipeline")
+    # Display steps
+    cols = st.columns(len(steps))
     for i, step in enumerate(steps):
-        cols = st.columns([1, 10])
-        with cols[0]:
-            st.markdown(f"<div style='font-size: 2rem; text-align: center;'>{step['icon']}</div>", 
-                       unsafe_allow_html=True)
-        with cols[1]:
-            st.markdown(f"**Step {step['step']}: {step['title']}**")
-            st.caption(step['description'])
-            if i < len(steps) - 1:
-                st.markdown("↓")
+        with cols[i]:
+            st.markdown(f"<div style='text-align: center; font-size: 2rem;'>{step['icon']}</div>", unsafe_allow_html=True)
+            st.markdown(f"**Step {step['step']}**")
+            st.caption(step['title'])
     
     st.markdown("---")
     
@@ -967,30 +661,22 @@ elif st.session_state.page == "👥 Team Formation":
     
     with param_col1:
         st.markdown("##### 🎯 Fit Weight (α)")
-        alpha = st.slider("Project-Skill Fit Importance", 0.0, 1.0, 0.5, 0.1,
+        alpha = st.slider("Project-Skill Fit Importance", 0.0, 1.0, 0.55, 0.05,
                          help="Higher values prioritize candidates with better skill match")
-        st.metric("Current Weight", f"{alpha:.2f}")
     
     with param_col2:
         st.markdown("##### 🌈 Diversity Weight (β)")
-        beta = st.slider("Team Diversity Importance", 0.0, 1.0, 0.3, 0.1,
-                        help="Higher values prioritize diverse skill sets and backgrounds")
-        st.metric("Current Weight", f"{beta:.2f}")
+        beta = st.slider("Team Diversity Importance", 0.0, 1.0, 0.25, 0.05,
+                        help="Higher values prioritize diverse skill sets")
     
     with param_col3:
-        st.markdown("##### ⚖️ Balance Weight (γ)")
-        gamma = st.slider("Team Balance Importance", 0.0, 1.0, 0.2, 0.1,
-                         help="Higher values prioritize balanced team composition")
-        st.metric("Current Weight", f"{gamma:.2f}")
-    
-    # Show total
-    total_weight = alpha + beta + gamma
-    if abs(total_weight - 1.0) > 0.01:
-        st.warning(f"Weights sum to {total_weight:.2f} (should be 1.0)")
+        st.markdown("##### ⚖️ Coverage Weight (γ)")
+        gamma = st.slider("Skill Coverage Importance", 0.0, 1.0, 0.20, 0.05,
+                         help="Higher values prioritize covering all required skills")
     
     # Visualize weight distribution
     weights = [alpha, beta, gamma]
-    labels = ['Fit', 'Diversity', 'Balance']
+    labels = ['Fit', 'Diversity', 'Coverage']
     colors = ['#3B82F6', '#10B981', '#8B5CF6']
     
     fig_weights = go.Figure(data=[
@@ -1006,6 +692,7 @@ elif st.session_state.page == "👥 Team Formation":
     fig_weights.update_layout(
         title="Algorithm Weight Distribution",
         yaxis_title="Weight",
+        yaxis_range=[0, 1],
         height=300
     )
     
@@ -1016,262 +703,124 @@ elif st.session_state.page == "👥 Team Formation":
     # Team building action
     st.markdown("#### 🚀 Build Teams")
     
+    if not MODULES_AVAILABLE:
+        st.error("❌ Modules not available. Please check your installation.")
+        st.stop()
+    
     build_col1, build_col2, build_col3 = st.columns([1, 2, 1])
     
     with build_col2:
         if st.button("🏗️ Construct Optimal Teams", type="primary", use_container_width=True):
-            if not st.session_state.profiles:
-                st.error("❌ No candidate profiles available")
-            else:
-                with st.spinner("Building teams with optimized parameters..."):
-                    # Simulate team building
-                    time.sleep(2)
+            with st.status("🚀 Building optimal teams...", expanded=True) as status:
+                try:
+                    # Step 1: Convert profiles to module format
+                    status.write("📊 Converting profiles to module format...")
+                    profiles_dict = []
+                    for p in st.session_state.profiles:
+                        profiles_dict.append({
+                            "id": p.get('id', ''),
+                            "metadata": {
+                                "dev_type": p.get('role', 'Unknown'),
+                                "work_experience_years": str(p.get('experience_years', 0))
+                            },
+                            "technical": {
+                                "skills": p.get('skills', [])
+                            },
+                            "constraints": {
+                                "weekly_availability_hours": str(p.get('availability_hours', 20))
+                            }
+                        })
                     
-                    # Generate sample teams if none exist
-                    if not st.session_state.teams:
-                        st.session_state.teams = [
-                            [
-                                {"id": "1", "name": "Alex Chen", "role": "Frontend Lead", "fit": 0.92, "diversity": 0.85},
-                                {"id": "2", "name": "Maria Rodriguez", "role": "Backend Architect", "fit": 0.88, "diversity": 0.78},
-                                {"id": "3", "name": "James Wilson", "role": "UX Designer", "fit": 0.85, "diversity": 0.92},
-                                {"id": "4", "name": "Sarah Johnson", "role": "DevOps Engineer", "fit": 0.90, "diversity": 0.80}
-                            ],
-                            [
-                                {"id": "5", "name": "David Kim", "role": "Full Stack", "fit": 0.87, "diversity": 0.88},
-                                {"id": "6", "name": "Lisa Wang", "role": "Backend Developer", "fit": 0.89, "diversity": 0.82},
-                                {"id": "7", "name": "Tom Baker", "role": "Frontend Developer", "fit": 0.84, "diversity": 0.90},
-                                {"id": "8", "name": "Emma Davis", "role": "UI Designer", "fit": 0.86, "diversity": 0.85}
-                            ]
-                        ]
+                    # Step 2: Convert project to module format
+                    status.write("🎯 Converting project requirements...")
+                    project_dict = {
+                        "title": st.session_state.project.get('title', ''),
+                        "required_skills": st.session_state.project.get('required_skills', []),
+                        "team_size": st.session_state.project.get('team_size', 4)
+                    }
                     
-                    st.success(f"✅ Built {len(st.session_state.teams)} teams!")
+                    # Step 3: Generate embeddings
+                    status.write("🔍 Generating candidate embeddings...")
+                    embedding_result = embed_candidates(profiles_dict)
+                    
+                    # Step 4: Generate project embeddings
+                    status.write("📈 Calculating project-candidate fit...")
+                    project_req = {
+                        "technical_requirements": {
+                            "skills": st.session_state.project.get('required_skills', []),
+                            "roles": st.session_state.project.get('required_roles', [])
+                        }
+                    }
+                    project_sim_result = embed_project(project_req)
+                    
+                    # Step 5: Build teams
+                    status.write("🤖 Running optimization algorithm...")
+                    config = TeamBuilderConfig(
+                        alpha=alpha,
+                        beta=beta,
+                        gamma=gamma,
+                        team_size=st.session_state.project.get('team_size', 4),
+                        n_teams=st.session_state.project.get('n_teams', 1)
+                    )
+                    
+                    teams = build_teams(
+                        profiles=profiles_dict,
+                        project=project_dict,
+                        config=config,
+                        candidate_dissim_matrix=embedding_result.get('dissimilarity_matrix'),
+                        candidate_ids=embedding_result.get('candidate_ids'),
+                        project_similarities=project_sim_result.get('candidate_similarities', {})
+                    )
+                    
+                    # Step 6: Convert teams back to display format
+                    status.write("👥 Assembling final teams...")
+                    teams_objects = []
+                    for team in teams:
+                        team_objects = []
+                        for member in team:
+                            # Find original profile
+                            orig_profile = next((p for p in st.session_state.profiles 
+                                               if p.get('id') == member.get("id")), None)
+                            if orig_profile:
+                                # Add fit score from project similarities
+                                fit_score = project_sim_result.get('candidate_similarities', {}).get(member.get("id"), 0.5)
+                                team_member = orig_profile.copy()
+                                team_member['fit'] = float(fit_score)
+                                team_objects.append(team_member)
+                        if team_objects:
+                            teams_objects.append(team_objects)
+                    
+                    st.session_state.teams = teams_objects
+                    
+                    # Step 7: Generate explanations
+                    status.write("💡 Generating team explanations...")
+                    explanations = []
+                    for team in teams_objects:
+                        team_dict = [{
+                            "id": p.get('id'),
+                            "metadata": {"dev_type": p.get('role')},
+                            "technical": {"skills": p.get('skills', [])}
+                        } for p in team]
+                        
+                        explanation = explain_team(team_dict, project_dict)
+                        explanations.append(explanation)
+                    
+                    st.session_state.explanations = explanations
+                    
+                    status.update(label="✅ Team formation complete!", state="complete")
+                    
+                    st.success(f"✨ Generated {len(teams_objects)} team configurations!")
                     st.balloons()
                     
-                    # Show quick results
-                    st.markdown("##### 📊 Quick Results")
-                    results_cols = st.columns(3)
-                    with results_cols[0]:
-                        avg_fit = np.mean([member.get('fit', 0) for team in st.session_state.teams 
-                                         for member in team])
-                        st.metric("Avg Team Fit", f"{avg_fit:.2f}")
-                    with results_cols[1]:
-                        avg_div = np.mean([member.get('diversity', 0) for team in st.session_state.teams 
-                                         for member in team])
-                        st.metric("Avg Diversity", f"{avg_div:.2f}")
-                    with results_cols[2]:
-                        st.metric("Total Members", 
-                                 sum(len(team) for team in st.session_state.teams))
+                    # Auto-navigate to results
+                    st.session_state.page = "📋 Results & Export"
+                    st.rerun()
+                    
+                except Exception as e:
+                    st.error(f"❌ Error building teams: {e}")
+                    status.update(label="❌ Team formation failed", state="error")
 
-# Page 5: Analytics Dashboard
-elif st.session_state.page == "📊 Analytics Dashboard":
-    st.header("📊 Analytics & Insights Dashboard")
-    
-    if not st.session_state.project or not st.session_state.teams:
-        st.warning("📈 No team data available. Please generate teams first.")
-        st.stop()
-    
-    # Top-level KPIs
-    st.markdown("### 📈 Key Performance Indicators")
-    
-    kpi_cols = st.columns(4)
-    with kpi_cols[0]:
-        st.metric("Team Effectiveness", "87%", "+12% vs baseline")
-    with kpi_cols[1]:
-        st.metric("Skill Coverage", "92%", "+24% vs random")
-    with kpi_cols[2]:
-        st.metric("Diversity Score", "0.78", "+0.18 vs industry avg")
-    with kpi_cols[3]:
-        st.metric("Cost Efficiency", "94%", "Optimal")
-    
-    tab1, tab2, tab3, tab4 = st.tabs(["📋 Team Analysis", "📊 Skill Coverage", "👥 Role Distribution", "📈 Performance Trends"])
-    
-    with tab1:
-        st.markdown("#### Team Composition Analysis")
-        
-        # Team comparison metrics
-        team_metrics = []
-        for i, team in enumerate(st.session_state.teams):
-            avg_fit = np.mean([m.get('fit', 0.5) for m in team])
-            avg_exp = np.mean([m.get('experience_years', 3) for m in team])
-            unique_skills = len(set([skill for m in team for skill in m.get('skills', [])]))
-            team_metrics.append({
-                "Team": f"Team {i+1}",
-                "Size": len(team),
-                "Avg Fit": avg_fit,
-                "Avg Exp (yrs)": avg_exp,
-                "Unique Skills": unique_skills,
-                "Balance Score": avg_fit * 0.6 + (unique_skills/20) * 0.4
-            })
-        
-        df_team_metrics = pd.DataFrame(team_metrics)
-        
-        # Display metrics
-        st.dataframe(
-            df_team_metrics.style.background_gradient(subset=['Avg Fit', 'Balance Score'], cmap='Blues'),
-            use_container_width=True
-        )
-        
-        # Visualization
-        fig = go.Figure(data=[
-            go.Bar(name='Avg Fit', x=df_team_metrics['Team'], y=df_team_metrics['Avg Fit']),
-            go.Bar(name='Balance Score', x=df_team_metrics['Team'], y=df_team_metrics['Balance Score']),
-            go.Scatter(name='Unique Skills', x=df_team_metrics['Team'], 
-                      y=df_team_metrics['Unique Skills']/10, mode='lines+markers', yaxis='y2')
-        ])
-        
-        fig.update_layout(
-            title="Team Performance Metrics",
-            yaxis=dict(title="Score (0-1)"),
-            yaxis2=dict(title="Unique Skills", overlaying='y', side='right'),
-            barmode='group',
-            height=400
-        )
-        
-        st.plotly_chart(fig, use_container_width=True)
-    
-    with tab2:
-        st.markdown("#### Skill Coverage Analysis")
-        
-        # Get all required skills from project
-        required_skills = st.session_state.project.get('required_skills', [])
-        
-        if required_skills:
-            # Calculate coverage per team
-            coverage_data = []
-            for i, team in enumerate(st.session_state.teams):
-                team_skills = set()
-                for member in team:
-                    team_skills.update(member.get('skills', []))
-                
-                coverage = len(set(required_skills) & team_skills) / len(required_skills) * 100
-                coverage_data.append({
-                    "Team": f"Team {i+1}",
-                    "Coverage %": coverage,
-                    "Covered Skills": len(set(required_skills) & team_skills),
-                    "Missing Skills": len(set(required_skills) - team_skills)
-                })
-            
-            df_coverage = pd.DataFrame(coverage_data)
-            
-            # Display coverage
-            st.dataframe(df_coverage, use_container_width=True)
-            
-            # Coverage visualization
-            fig = px.bar(
-                df_coverage,
-                x='Team',
-                y='Coverage %',
-                title="Required Skill Coverage by Team",
-                color='Coverage %',
-                color_continuous_scale='Viridis'
-            )
-            fig.update_layout(height=400)
-            st.plotly_chart(fig, use_container_width=True)
-            
-            # Missing skills analysis
-            st.markdown("##### 🔍 Missing Skills Analysis")
-            for i, team in enumerate(st.session_state.teams):
-                team_skills = set()
-                for member in team:
-                    team_skills.update(member.get('skills', []))
-                
-                missing = set(required_skills) - team_skills
-                if missing:
-                    with st.expander(f"Team {i+1} - Missing Skills ({len(missing)})"):
-                        for skill in missing:
-                            st.markdown(f"- {skill}")
-    
-    with tab3:
-        st.markdown("#### Role Distribution Analysis")
-        
-        # Get all roles from teams
-        all_roles = []
-        for team in st.session_state.teams:
-            for member in team:
-                all_roles.append(member.get('role', 'Unknown'))
-        
-        if all_roles:
-            role_counts = pd.Series(all_roles).value_counts()
-            
-            # Pie chart
-            fig = px.pie(
-                values=role_counts.values,
-                names=role_counts.index,
-                title="Role Distribution Across All Teams",
-                hole=0.3,
-                color_discrete_sequence=px.colors.qualitative.Set3
-            )
-            fig.update_traces(textposition='inside', textinfo='percent+label')
-            fig.update_layout(height=500)
-            st.plotly_chart(fig, use_container_width=True)
-            
-            # Role by team matrix
-            st.markdown("##### 👥 Role Distribution by Team")
-            role_by_team = []
-            for i, team in enumerate(st.session_state.teams):
-                team_roles = [m.get('role', 'Unknown') for m in team]
-                for role in set(team_roles):
-                    role_by_team.append({
-                        "Team": f"Team {i+1}",
-                        "Role": role,
-                        "Count": team_roles.count(role)
-                    })
-            
-            if role_by_team:
-                df_role_team = pd.DataFrame(role_by_team)
-                fig_heatmap = px.density_heatmap(
-                    df_role_team,
-                    x="Team",
-                    y="Role",
-                    z="Count",
-                    title="Role Distribution Heatmap",
-                    color_continuous_scale="Blues"
-                )
-                fig_heatmap.update_layout(height=400)
-                st.plotly_chart(fig_heatmap, use_container_width=True)
-    
-    with tab4:
-        st.markdown("#### Historical Performance Trends")
-        st.info("📈 Historical data will appear here after multiple team formations")
-        
-        # Sample trend data
-        dates = pd.date_range(start='2024-01-01', periods=12, freq='M')
-        trend_data = {
-            'Date': dates,
-            'Team Effectiveness': np.random.uniform(0.7, 0.95, 12),
-            'Diversity Score': np.random.uniform(0.6, 0.85, 12),
-            'Skill Coverage': np.random.uniform(0.75, 0.98, 12)
-        }
-        
-        df_trend = pd.DataFrame(trend_data)
-        
-        fig = px.line(
-            df_trend,
-            x='Date',
-            y=['Team Effectiveness', 'Diversity Score', 'Skill Coverage'],
-            title="Performance Trends Over Time",
-            markers=True
-        )
-        
-        fig.update_layout(
-            height=500,
-            yaxis_title="Score",
-            xaxis_title="Date"
-        )
-        
-        st.plotly_chart(fig, use_container_width=True)
-        
-        # Summary statistics
-        st.markdown("##### 📊 Summary Statistics")
-        summary_cols = st.columns(3)
-        with summary_cols[0]:
-            st.metric("Avg Effectiveness", f"{df_trend['Team Effectiveness'].mean():.2%}")
-        with summary_cols[1]:
-            st.metric("Avg Diversity", f"{df_trend['Diversity Score'].mean():.2%}")
-        with summary_cols[2]:
-            st.metric("Avg Coverage", f"{df_trend['Skill Coverage'].mean():.2%}")
-
-# Page 6: Results & Export
+# Page 4: Results & Export
 elif st.session_state.page == "📋 Results & Export":
     st.header("📋 Team Recommendations & Export")
     
@@ -1283,9 +832,8 @@ elif st.session_state.page == "📋 Results & Export":
         st.stop()
     
     st.markdown(f"### Project: **{st.session_state.project.get('title', 'Untitled Project')}**")
-    st.markdown(f"*{st.session_state.project.get('description', '')[:200]}...*")
     
-    # Team selection with visual indicators
+    # Team selection
     st.markdown("#### 🎯 Select Team to Review")
     
     team_options = [f"Team {i+1} • Score: {np.mean([m.get('fit', 0.5) for m in team]):.2f}" 
@@ -1333,14 +881,23 @@ elif st.session_state.page == "📋 Results & Export":
         with metrics_cols[0]:
             st.metric("Project Fit", f"{avg_fit:.2f}")
         with metrics_cols[1]:
-            avg_div = np.mean([m.get('diversity', 0.5) for m in team])
-            st.metric("Diversity", f"{avg_div:.2f}")
-        with metrics_cols[2]:
             unique_skills = len(set([skill for m in team for skill in m.get('skills', [])]))
             st.metric("Unique Skills", unique_skills)
-        with metrics_cols[3]:
-            avg_exp = np.mean([m.get('experience_years', 3) for m in team])
+        with metrics_cols[2]:
+            avg_exp = np.mean([m.get('experience_years', 0) for m in team])
             st.metric("Avg Experience", f"{avg_exp:.1f} yrs")
+        with metrics_cols[3]:
+            # Skill coverage
+            if st.session_state.project:
+                required = set(st.session_state.project.get('required_skills', []))
+                team_skills = set([skill for m in team for skill in m.get('skills', [])])
+                coverage = len(required & team_skills)
+                total = len(required)
+                if total > 0:
+                    st.metric("Skill Coverage", f"{coverage}/{total}", 
+                             f"{coverage/max(total,1)*100:.0f}%")
+                else:
+                    st.metric("Required Skills", "Not specified")
         
         st.markdown("---")
         
@@ -1408,7 +965,7 @@ elif st.session_state.page == "📋 Results & Export":
         # Action buttons
         st.markdown("#### ⚡ Actions")
         
-        action_cols = st.columns(5)
+        action_cols = st.columns(4)
         
         with action_cols[0]:
             if st.button("✅ Select This Team", type="primary", use_container_width=True):
@@ -1416,40 +973,33 @@ elif st.session_state.page == "📋 Results & Export":
                 st.balloons()
         
         with action_cols[1]:
-            if st.button("🔄 Regenerate", use_container_width=True):
-                st.info("🔄 Regenerating team configuration...")
-                time.sleep(1)
+            if st.button("🔄 Regenerate Teams", use_container_width=True):
+                st.session_state.page = "👥 Team Formation"
                 st.rerun()
         
         with action_cols[2]:
-            if st.button("📊 Compare", use_container_width=True):
-                st.session_state.page = "📊 Analytics Dashboard"
-                st.rerun()
-        
-        with action_cols[3]:
             # Export as JSON
             json_data = {
                 "team_id": team_idx + 1,
-                "project": st.session_state.project.get('title'),
+                "project": st.session_state.project,
                 "members": team,
                 "metrics": {
                     "avg_fit": avg_fit,
-                    "avg_diversity": avg_div,
                     "unique_skills": unique_skills,
-                    "avg_experience": avg_exp
-                },
-                "generated_at": datetime.now().isoformat()
+                    "avg_experience": avg_exp,
+                    "generated_at": datetime.now().isoformat()
+                }
             }
             
             st.download_button(
-                label="📥 JSON",
+                label="📥 Export JSON",
                 data=json.dumps(json_data, indent=2),
                 file_name=f"team_{team_idx + 1}_{datetime.now().strftime('%Y%m%d')}.json",
                 mime="application/json",
                 use_container_width=True
             )
         
-        with action_cols[4]:
+        with action_cols[3]:
             # Export as CSV
             csv_data = []
             for member in team:
@@ -1458,14 +1008,15 @@ elif st.session_state.page == "📋 Results & Export":
                     "role": member.get('role'),
                     "skills": ", ".join(member.get('skills', [])),
                     "fit_score": member.get('fit', 0.5),
-                    "experience_years": member.get('experience_years', 0)
+                    "experience_years": member.get('experience_years', 0),
+                    "availability_hours": member.get('availability_hours', 20)
                 })
             
             df_csv = pd.DataFrame(csv_data)
             csv_string = df_csv.to_csv(index=False)
             
             st.download_button(
-                label="📊 CSV",
+                label="📊 Export CSV",
                 data=csv_string,
                 file_name=f"team_{team_idx + 1}_{datetime.now().strftime('%Y%m%d')}.csv",
                 mime="text/csv",
@@ -1478,53 +1029,322 @@ elif st.session_state.page == "📋 Results & Export":
     
     for i, team in enumerate(st.session_state.teams):
         with st.expander(f"Team {i+1} • {len(team)} members • Score: {np.mean([m.get('fit', 0.5) for m in team]):.2f}", 
-                        expanded=(i == 0)):
+                        expanded=(i == team_idx)):
             
             # Quick stats
             stats_cols = st.columns(4)
             with stats_cols[0]:
                 st.metric("Fit", f"{np.mean([m.get('fit', 0.5) for m in team]):.2f}")
             with stats_cols[1]:
-                st.metric("Diversity", f"{np.mean([m.get('diversity', 0.5) for m in team]):.2f}")
+                st.metric("Size", len(team))
             with stats_cols[2]:
                 unique_skills = len(set([skill for m in team for skill in m.get('skills', [])]))
                 st.metric("Unique Skills", unique_skills)
             with stats_cols[3]:
                 st.metric("Avg Exp", f"{np.mean([m.get('experience_years', 3) for m in team]):.1f}y")
             
-            # Members grid
-            member_cols = st.columns(min(4, len(team)))
-            for idx, member in enumerate(team):
-                col_idx = idx % 4
-                with member_cols[col_idx]:
-                    # Mini card
-                    st.markdown(f"""
-                    <div style='
-                        padding: 12px;
-                        border-radius: 10px;
-                        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-                        border: 1px solid #e2e8f0;
-                        margin-bottom: 10px;
-                    '>
-                        <div style='font-weight: bold; font-size: 1.1rem;'>{member.get('name', 'Member')}</div>
-                        <div style='color: #64748b; font-size: 0.9rem;'>{member.get('role', 'Role')}</div>
-                        <div style='margin-top: 8px;'>
-                            <span style='
-                                display: inline-block;
-                                padding: 2px 8px;
-                                background: #3B82F6;
-                                color: white;
-                                border-radius: 12px;
-                                font-size: 0.8rem;
-                                margin-top: 4px;
-                            '>Fit: {member.get('fit', 0.5):.2f}</span>
-                        </div>
-                        <div style='margin-top: 8px; font-size: 0.85rem; color: #475569;'>
-                            {', '.join(member.get('skills', [])[:3])}
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-
+            # Brief explanation
+            if i < len(st.session_state.explanations):
+                st.caption(st.session_state.explanations[i][:200] + "...")
+# Page 5: Calculation Reports
+elif st.session_state.page == "📊 Calculation Reports":
+    st.header("📊 Algorithm Calculation Reports")
+    
+    if not st.session_state.project or not st.session_state.profiles or not st.session_state.teams:
+        st.warning("📊 No calculation data available. Please generate teams first.")
+        if st.button("👥 Go to Team Formation"):
+            st.session_state.page = "👥 Team Formation"
+            st.rerun()
+        st.stop()
+    
+    # Tab organization
+    tab1, tab2, tab3, tab4 = st.tabs(["📈 Score Calculations", "🎯 Candidate Rankings", "🤖 Algorithm Steps", "📋 Raw Data"])
+    
+    with tab1:
+        st.markdown("### 📈 Team Score Calculations")
+        
+        # Create a DataFrame for score calculations
+        score_data = []
+        for i, team in enumerate(st.session_state.teams):
+            # Calculate various scores
+            avg_fit = np.mean([m.get('fit', 0.5) for m in team])
+            unique_skills = len(set([skill for m in team for skill in m.get('skills', [])]))
+            
+            # Project requirements
+            required_skills = st.session_state.project.get('required_skills', [])
+            team_skills = set([skill for m in team for skill in m.get('skills', [])])
+            
+            # Coverage score
+            if required_skills:
+                coverage = len(set(required_skills) & team_skills) / len(required_skills)
+            else:
+                coverage = 0
+            
+            # Diversity score (simplified - based on unique roles)
+            roles = [m.get('role', 'Unknown') for m in team]
+            diversity = len(set(roles)) / len(roles) if team else 0
+            
+            # Experience score
+            avg_exp = np.mean([m.get('experience_years', 0) for m in team])
+            exp_score = min(1.0, avg_exp / 10)  # Normalize to 0-1
+            
+            score_data.append({
+                "Team": f"Team {i+1}",
+                "Fit Score": f"{avg_fit:.3f}",
+                "Skill Coverage": f"{coverage:.1%}",
+                "Diversity Score": f"{diversity:.3f}",
+                "Experience Score": f"{exp_score:.3f}",
+                "Unique Skills": unique_skills,
+                "Team Size": len(team)
+            })
+        
+        df_scores = pd.DataFrame(score_data)
+        st.dataframe(df_scores, use_container_width=True)
+        
+        # Visualize scores
+        if score_data:
+            st.markdown("#### 📊 Score Visualization")
+            metrics = ['Fit Score', 'Skill Coverage', 'Diversity Score', 'Experience Score']
+            
+            # Convert string percentages to float for plotting
+            plot_data = []
+            for team_data in score_data:
+                team_name = team_data['Team']
+                fit = float(team_data['Fit Score'])
+                coverage = float(team_data['Skill Coverage'].strip('%')) / 100
+                diversity = float(team_data['Diversity Score'])
+                experience = float(team_data['Experience Score'])
+                
+                plot_data.append({
+                    'Team': team_name,
+                    'Fit': fit,
+                    'Coverage': coverage,
+                    'Diversity': diversity,
+                    'Experience': experience
+                })
+            
+            df_plot = pd.DataFrame(plot_data)
+            
+            fig = go.Figure()
+            
+            for team in df_plot['Team']:
+                team_data = df_plot[df_plot['Team'] == team]
+                fig.add_trace(go.Scatterpolar(
+                    r=[team_data['Fit'].values[0], 
+                       team_data['Coverage'].values[0],
+                       team_data['Diversity'].values[0],
+                       team_data['Experience'].values[0],
+                       team_data['Fit'].values[0]],  # Close the shape
+                    theta=['Fit', 'Coverage', 'Diversity', 'Experience', 'Fit'],
+                    fill='toself',
+                    name=team
+                ))
+            
+            fig.update_layout(
+                polar=dict(
+                    radialaxis=dict(
+                        visible=True,
+                        range=[0, 1]
+                    )),
+                showlegend=True,
+                title="Team Performance Radar Chart",
+                height=500
+            )
+            
+            st.plotly_chart(fig, use_container_width=True)
+    
+    with tab2:
+        st.markdown("### 🎯 Individual Candidate Rankings")
+        
+        # Collect all candidates with their scores
+        candidate_scores = []
+        for profile in st.session_state.profiles:
+            # Find if candidate is in any team
+            in_team = False
+            team_found = None
+            for i, team in enumerate(st.session_state.teams):
+                if any(m.get('id') == profile.get('id') for m in team):
+                    in_team = True
+                    team_found = i + 1
+                    break
+            
+            candidate_scores.append({
+                "Name": profile.get('name', 'Unknown'),
+                "Role": profile.get('role', 'Unknown'),
+                "Experience": profile.get('experience_years', 0),
+                "Skills Count": len(profile.get('skills', [])),
+                "In Team": "✅ Yes" if in_team else "❌ No",
+                "Team #": team_found if in_team else "-",
+                "Fit Score": profile.get('fit', 'N/A')
+            })
+        
+        df_candidates = pd.DataFrame(candidate_scores)
+        
+        # Sort by experience or fit score
+        sort_by = st.selectbox("Sort by:", ["Experience", "Skills Count", "In Team"])
+        if sort_by == "Experience":
+            df_candidates = df_candidates.sort_values("Experience", ascending=False)
+        elif sort_by == "Skills Count":
+            df_candidates = df_candidates.sort_values("Skills Count", ascending=False)
+        
+        st.dataframe(df_candidates, use_container_width=True)
+        
+        # Statistics
+        st.markdown("#### 📊 Candidate Pool Statistics")
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            total_candidates = len(st.session_state.profiles)
+            selected_candidates = sum(1 for c in candidate_scores if c["In Team"] == "✅ Yes")
+            st.metric("Selected", selected_candidates, 
+                     f"{selected_candidates/total_candidates*100:.0f}%")
+        with col2:
+            avg_exp = np.mean([p.get('experience_years', 0) for p in st.session_state.profiles])
+            st.metric("Avg Experience", f"{avg_exp:.1f} years")
+        with col3:
+            avg_skills = np.mean([len(p.get('skills', [])) for p in st.session_state.profiles])
+            st.metric("Avg Skills", f"{avg_skills:.1f}")
+        with col4:
+            unique_roles = len(set([p.get('role', '') for p in st.session_state.profiles]))
+            st.metric("Unique Roles", unique_roles)
+    
+    with tab3:
+        st.markdown("### 🤖 Algorithm Execution Steps")
+        
+        steps = [
+            {
+                "step": 1,
+                "name": "Data Preparation",
+                "description": "Convert candidate profiles to vector embeddings",
+                "details": f"Processed {len(st.session_state.profiles)} candidate profiles"
+            },
+            {
+                "step": 2,
+                "name": "Project Analysis",
+                "description": "Extract and embed project requirements",
+                "details": f"Extracted {len(st.session_state.project.get('required_skills', []))} skills and {len(st.session_state.project.get('required_roles', []))} roles"
+            },
+            {
+                "step": 3,
+                "name": "Similarity Calculation",
+                "description": "Calculate candidate-project fit scores",
+                "details": "Used cosine similarity on embeddings"
+            },
+            {
+                "step": 4,
+                "name": "Team Formation",
+                "description": "Apply greedy algorithm with weights",
+                "details": f"α={st.session_state.project.get('alpha', 0.55):.2f} (Fit), β={st.session_state.project.get('beta', 0.25):.2f} (Diversity), γ={st.session_state.project.get('gamma', 0.20):.2f} (Coverage)"
+            },
+            {
+                "step": 5,
+                "name": "Optimization",
+                "description": "Balance team composition",
+                "details": f"Generated {len(st.session_state.teams)} team configurations"
+            },
+            {
+                "step": 6,
+                "name": "Validation",
+                "description": "Check constraints and requirements",
+                "details": f"Team size: {st.session_state.project.get('team_size', 4)}, Duration: {st.session_state.project.get('duration', '2 months')}"
+            }
+        ]
+        
+        for step in steps:
+            with st.expander(f"Step {step['step']}: {step['name']}", expanded=True):
+                st.markdown(f"**{step['description']}**")
+                st.markdown(f"*{step['details']}*")
+                
+                # Add progress bar for visual effect
+                if step['step'] <= 6:
+                    st.progress(step['step'] / 6)
+        
+        # Algorithm weights visualization
+        st.markdown("#### ⚖️ Algorithm Weights Configuration")
+        weights_data = {
+            'Metric': ['Fit (α)', 'Diversity (β)', 'Coverage (γ)'],
+            'Value': [
+                st.session_state.project.get('alpha', 0.55),
+                st.session_state.project.get('beta', 0.25),
+                st.session_state.project.get('gamma', 0.20)
+            ],
+            'Description': [
+                'Project-skill matching importance',
+                'Team diversity and complementary skills',
+                'Coverage of all required skills'
+            ]
+        }
+        
+        df_weights = pd.DataFrame(weights_data)
+        st.dataframe(df_weights, use_container_width=True)
+        
+        # Pie chart of weights
+        fig = px.pie(
+            df_weights,
+            values='Value',
+            names='Metric',
+            title='Algorithm Weight Distribution',
+            color='Metric',
+            color_discrete_sequence=['#3B82F6', '#10B981', '#8B5CF6']
+        )
+        fig.update_traces(textposition='inside', textinfo='percent+label')
+        fig.update_layout(height=400)
+        st.plotly_chart(fig, use_container_width=True)
+    
+    with tab4:
+        st.markdown("### 📋 Raw Calculation Data")
+        
+        st.markdown("#### Project Requirements")
+        st.json(st.session_state.project, expanded=False)
+        
+        st.markdown("#### Algorithm Configuration")
+        config_data = {
+            "team_size": st.session_state.project.get('team_size', 4),
+            "n_teams": st.session_state.project.get('n_teams', 1),
+            "alpha": st.session_state.project.get('alpha', 0.55),
+            "beta": st.session_state.project.get('beta', 0.25),
+            "gamma": st.session_state.project.get('gamma', 0.20),
+            "required_skills_count": len(st.session_state.project.get('required_skills', [])),
+            "required_roles_count": len(st.session_state.project.get('required_roles', [])),
+            "candidate_pool_size": len(st.session_state.profiles)
+        }
+        st.json(config_data, expanded=False)
+        
+        st.markdown("#### Team Composition Summary")
+        team_summary = []
+        for i, team in enumerate(st.session_state.teams):
+            team_summary.append({
+                f"Team_{i+1}": {
+                    "size": len(team),
+                    "members": [m.get('name') for m in team],
+                    "roles": list(set([m.get('role') for m in team])),
+                    "avg_experience": np.mean([m.get('experience_years', 0) for m in team]),
+                    "skill_coverage": len(set([skill for m in team for skill in m.get('skills', [])]))
+                }
+            })
+        
+        for summary in team_summary:
+            st.json(summary, expanded=False)
+        
+        # Download raw data
+        st.markdown("---")
+        st.markdown("#### 📥 Download Calculation Data")
+        
+        all_data = {
+            "project": st.session_state.project,
+            "algorithm_config": config_data,
+            "teams": team_summary,
+            "generated_at": datetime.now().isoformat()
+        }
+        
+        json_data = json.dumps(all_data, indent=2)
+        
+        st.download_button(
+            label="📄 Download Full Calculation Report",
+            data=json_data,
+            file_name=f"calculation_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+            mime="application/json",
+            use_container_width=True
+        )
 # Footer with enhanced design
 st.markdown("""
 <hr style='margin: 3rem 0; border: none; height: 2px; background: linear-gradient(90deg, transparent, #3B82F6, transparent);'>
@@ -1541,24 +1361,7 @@ st.markdown("""
         Group 45 • TU Wien • 2025
     </div>
     <div style='font-size: 0.8rem; color: #94a3b8;'>
-        v2.0 Professional Edition • Last updated: """ + datetime.now().strftime("%Y-%m-%d") + """
+        Using consolidated modules • Last updated: """ + datetime.now().strftime("%Y-%m-%d") + """
     </div>
 </div>
-""", unsafe_allow_html=True)
-
-# Add some JavaScript for smooth scrolling
-st.markdown("""
-<script>
-// Smooth scrolling for anchor links
-document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-        anchor.addEventListener('click', function (e) {
-            e.preventDefault();
-            document.querySelector(this.getAttribute('href')).scrollIntoView({
-                behavior: 'smooth'
-            });
-        });
-    });
-});
-</script>
 """, unsafe_allow_html=True)
