@@ -28,7 +28,7 @@ cp .env.template .env
 ### Running the Application
 ```bash
 # Start Streamlit UI
-streamlit run src/modules/member4_ui/app.py
+streamlit run src/modules/ui/app.py
 
 # Run integration test
 python tests/integration_test.py
@@ -38,12 +38,11 @@ python tests/integration_test.py
 
 ### Each Member's Workspace
 Each member works in their own directory:
-- `src/modules/member1_candidate_embeddings/` - Shahzad
-- `src/modules/member2_project_embeddings/` - Roxana  
-- `src/modules/member3_team_builder/` - Ana
-- `src/modules/member4_ui/` - Șaban
-- `src/modules/member5_json_explainer/` - Noor
-
+- `src/modules/candidate_embeddings/` - Shahzad
+- `src/modules/project_embeddings/` - Roxana  
+- `src/modules/team_builder/` - Ana
+- `src/modules/ui/` - Șaban
+- `src/modules/json_explainer/` - Noor
 ### Implementing Your Module
 
 1. **Understand the interface** in `shared/interfaces.py`
