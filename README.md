@@ -11,19 +11,18 @@ skill-sync-project/
 ├── requirements.txt             # Python dependencies
 ├── README.md                    # This file
 ├── src/
-│   ├── modules/                 # Consolidated modules (M1-M5)
-│   │   ├── __init__.py          # Main module interface
-│   │   ├── candidate_embeddings/  # M1: Candidate embeddings
-│   │   ├── project_embeddings/    # M2: Project embeddings
-│   │   ├── team_builder/          # M3: Team building algorithms
-│   │   ├── json_extraction/       # M4: JSON extraction from text/CSV
-│   │   ├── EXPLANATION/           # M5: Team explanations and reports
-│   │   └── ui/
-│   │       ├── app_simple.py     # Main Streamlit UI application
-│   │       └── app.py           # Advanced UI (if available)
-│   └── shared/                  # Shared interfaces
+│   └── modules/                 # Consolidated modules (M1-M5)
+│       ├── __init__.py          # Main module interface
+│       ├── candidate_embeddings/  # M1: Candidate embeddings
+│       ├── project_embeddings/    # M2: Project embeddings
+│       ├── team_builder/          # M3: Team building algorithms
+│       ├── json_extraction/       # M4: JSON extraction from text/CSV
+│       ├── EXPLANATION/           # M5: Team explanations and reports
+│       └── ui/
+│           └── app.py             # Main Streamlit UI application
 └── data/
-    └── artifacts/              # Saved embeddings and calculations
+    ├── sample/                  # Sample candidate CSVs
+    └── artifacts/               # Saved embeddings and calculations
 
 ## 🛠️ Installation & Setup
 
