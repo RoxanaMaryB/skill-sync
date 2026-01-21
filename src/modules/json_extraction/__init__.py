@@ -14,7 +14,7 @@ class ExtractorConfig:
     """Configuration for extraction"""
     model: str = "openai/gpt-4o-mini"
     temperature: float = 0.0
-    limit: int = 10
+    limit: int = 100
     base_url: str = "https://openrouter.ai/api/v1"
 
 class CandidateExtractor:

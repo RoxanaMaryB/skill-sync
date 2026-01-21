@@ -133,7 +133,7 @@ Key sections:
   - γ (Gamma): Skill coverage importance (default: 0.20)
 - Build Teams: Click to generate team recommendations
 
-### 4. 📊 Calculation Reports Page (NEW)
+### 4. 📊 Calculation Reports Page
 
 Purpose: View detailed algorithm calculations and insights
 
